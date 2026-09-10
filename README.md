@@ -21,7 +21,6 @@ Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.
 <br />
 
 | | |
-|---|---|
 | 📊 | Input/output tokens, cost, cache — daily, weekly, all-time |
 | 📈 | Line, bar & donut charts, top models, recent sessions |
 | 🎛️ | Per-provider filters, Combined / Split views, brand icons |
