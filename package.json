@@ -2,16 +2,16 @@
   "name": "opencode-stats",
   "version": "0.1.1",
   "description": "Lightweight desktop dashboard for OpenCode token usage and costs (Tauri + React)",
-  "author": "terzagit",
+  "author": "terzastella",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/terzagit/opencode-stats.git"
+    "url": "https://github.com/terzastella/opencode-stats.git"
   },
   "bugs": {
-    "url": "https://github.com/terzagit/opencode-stats/issues"
+    "url": "https://github.com/terzastella/opencode-stats/issues"
   },
-  "homepage": "https://github.com/terzagit/opencode-stats#readme",
+  "homepage": "https://github.com/terzastella/opencode-stats#readme",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/terzagit/opencode-stats/releases"><b>⬇️ Download v0.1.1</b></a>
+  <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.1</b></a>
   &nbsp;·&nbsp;
   <a href="#opencode-stats-1">🇮🇹 Italiano</a>
 </p>
@@ -110,7 +110,7 @@ the token source in your statistics). All trademarks belong to their respective 
 # OpenCode Stats
 
 <p align="center">
-  🇮🇹 Versione italiana — <a href="#opencode-stats">English</a> sopra · <a href="https://github.com/terzagit/opencode-stats/releases"><b>⬇️ Download v0.1.1</b></a>
+  🇮🇹 Versione italiana — <a href="#opencode-stats">English</a> sopra · <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.1</b></a>
 </p>
 
 Dashboard desktop leggera (**Tauri v2**, `.exe` ~10 MB, ~30 MB RAM) per le statistiche di
