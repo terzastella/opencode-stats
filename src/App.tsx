@@ -27,17 +27,6 @@ import "./App.css";
 
 echarts.use([LineChart, BarChart, PieChart, GridComponent, LegendComponent, TitleComponent, TooltipComponent, CanvasRenderer, SVGRenderer]);
 
-/** Live paint status mirrored into the window title for headless diagnostics. */
-const paintStatus: Record<string, string> = {};
-function publishPaint() {
-  try {
-    const parts = ["tokens", "costo", "torta"].map((k) => `${k}=${paintStatus[k] ?? "…"}`);
-    document.title = `OpenCode Stats · ${parts.join(" ")}`;
-  } catch {
-    /* noop */
-  }
-}
-
 const RANGE_DAYS: Record<RangeKey, number> = { daily: 14, weekly: 56, all: 365 };
 const REFRESH_MS = 30_000;
 
@@ -89,8 +78,6 @@ function useEChart(tag: string, option: echarts.EChartsCoreOption | null, onDiag
   tagRef.current = tag;
 
   const report = (msg: string | null) => {
-    paintStatus[tagRef.current] = msg ?? `${tagRef.current} cleared`;
-    publishPaint();
     diagRef.current(msg);
   };
 
@@ -839,10 +826,12 @@ export default function App() {
     };
   }, [pieRows, fg, faint, tipBg, tipBorder, dark, themeName, S]);
 
-  // First diagnostic message sticks (an early paint error must not be
-  // overwritten by later ok reports from the other charts).
-  const reportChart = (m: string | null) =>
-    setChartDiag((p) => (p === null || p.startsWith("ok") ? m : p));
+  // Chart errors stick in the footer diagnostics; routine "ok" noise is
+  // swallowed so release builds stay clean (only real problems surface).
+  const reportChart = (m: string | null) => {
+    if (m == null || m.includes(" ok ")) return;
+    setChartDiag(m);
+  };
   const tokensRef = useEChart("tokens", tokensOption, reportChart);
   const costRef = useEChart("costo", costOption, reportChart);
   const providerChartRef = useEChart("provider", providerBarsOption, reportChart);

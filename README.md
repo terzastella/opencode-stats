@@ -10,6 +10,12 @@ A lightweight desktop dashboard (**Tauri v2**, ~10 MB `.exe`, ~30 MB RAM) for yo
 OpenCode usage statistics: input/output tokens, cost, daily/weekly/all-time views,
 charts and tables, customizable profile, EN/IT interface.
 
+![Dashboard](docs/screenshots/dashboard-en.png)
+
+*Pie view and settings:*
+
+![Pie chart](docs/screenshots/chart-pie.png)
+
 ## Data (live, read-only)
 
 It reads `~/.local/share/opencode/opencode.db` read-only (`OPENCODE_DB_PATH` override):
@@ -71,6 +77,12 @@ the token source in your statistics). All trademarks belong to their respective 
 Dashboard desktop leggera (**Tauri v2**, `.exe` ~10 MB, ~30 MB RAM) per le statistiche di
 utilizzo di OpenCode: input/output tokens, costo, viste giornaliere/settimanali/tutto,
 grafici e tabelle, profilo personalizzabile, interfaccia EN/IT.
+
+![Dashboard](docs/screenshots/dashboard-it.png)
+
+*Pannello impostazioni profilo:*
+
+![Impostazioni](docs/screenshots/settings.png)
 
 ## Dati (live, sola lettura)
 
