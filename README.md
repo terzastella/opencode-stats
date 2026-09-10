@@ -1,31 +1,25 @@
-<p align="center">
-  <a id="en"></a>
-  <img src="src-tauri/icons/icon.png" width="96" alt="OpenCode Stats logo" />
-</p>
+<a id="en"></a>
+<img align="left" src="src-tauri/icons/icon.png" width="64" alt="OpenCode Stats logo" />
 
-<h1 align="center">OpenCode Stats</h1>
+# OpenCode Stats
 
-<p align="center">
-  Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.<br />
-  <i>Tauri v2 · ~10 MB .exe · ~30 MB RAM · EN/IT</i>
-</p>
+Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.\
+*Tauri v2 · ~10 MB .exe · ~30 MB RAM · EN/IT*
 
-<p align="center">
-  <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.3</b></a>
-  &nbsp;·&nbsp;
-  <a href="#it">🇮🇹 Italiano</a>
-</p>
+[![License: MIT](./LICENSE)](./LICENSE)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-blue)
+![Tauri 2](https://img.shields.io/badge/Tauri-2-purple)
+![React 19](https://img.shields.io/badge/React-19-cyan)
+&nbsp;·&nbsp;
+[🇬🇧 English](#en) · [🇮🇹 Italiano](#it)
 
-<p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/platform-Windows-blue" alt="Platform: Windows" />
-  <img src="https://img.shields.io/badge/Tauri-2-purple" alt="Tauri 2" />
-  <img src="https://img.shields.io/badge/React-19-cyan" alt="React 19" />
-</p>
+**⬇️ [Download v0.1.3](https://github.com/terzastella/opencode-stats/releases)** — Windows setup + portable `.exe`.
 
-<p align="center">
-  <img src="docs/screenshots/dashboard-en.png" width="700" alt="OpenCode Stats dashboard" />
-</p>
+<br />
+
+<img src="docs/screenshots/dashboard-en.png" width="700" alt="OpenCode Stats dashboard" />
+
+<br />
 
 | | |
 |---|---|
@@ -36,17 +30,21 @@
 | 🌍 | English + Italian interface |
 | 🔒 | 100% local: read-only DB access, no keys, no auth, no telemetry |
 
+<br />
+
 <details>
 <summary><b>More screenshots</b></summary>
 <br />
-<p align="center">
-  <img src="docs/screenshots/chart-pie.png" width="700" alt="Donut chart view" /><br />
-  <em>Donut view (toggle Bars / Pie on the card)</em>
-</p>
-<p align="center">
-  <img src="docs/screenshots/settings.png" width="700" alt="Profile settings" /><br />
-  <em>Profile settings (photo, name, bio)</em>
-</p>
+
+<img src="docs/screenshots/chart-pie.png" width="700" alt="Donut chart view" />
+
+*Donut view (toggle Bars / Pie on the card)*
+
+<br />
+
+<img src="docs/screenshots/settings.png" width="700" alt="Profile settings" />
+
+*Profile settings (photo, name, bio)*
 </details>
 
 <details>
@@ -111,20 +109,24 @@ All trademarks belong to their respective owners.
 
 ---
 
+<details>
+<summary><b>🇮🇹 Versione italiana (clicca per aprire)</b></summary>
+<br />
+
 <a id="it"></a>
 # OpenCode Stats
-
-<p align="center">
-  🇮🇹 Versione italiana — <a href="#en">English</a> sopra · <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.3</b></a>
-</p>
 
 Dashboard desktop leggera (**Tauri v2**, `.exe` ~10 MB, ~30 MB RAM) per le statistiche di
 utilizzo di OpenCode: input/output tokens, costo, viste giornaliere/settimanali/tutto,
 grafici e tabelle, profilo personalizzabile, interfaccia EN/IT.
 
-<p align="center">
-  <img src="docs/screenshots/dashboard-it.png" width="700" alt="Dashboard OpenCode Stats" />
-</p>
+**⬇️ [Download v0.1.3](https://github.com/terzastella/opencode-stats/releases)**
+
+<br />
+
+<img src="docs/screenshots/dashboard-it.png" width="700" alt="Dashboard OpenCode Stats" />
+
+<br />
 
 | | |
 |---|---|
@@ -135,17 +137,21 @@ grafici e tabelle, profilo personalizzabile, interfaccia EN/IT.
 | 🌍 | Interfaccia inglese + italiano |
 | 🔒 | 100% locale: sola lettura DB, niente chiavi, niente telemetria |
 
+<br />
+
 <details>
 <summary><b>Altri screenshot</b></summary>
 <br />
-<p align="center">
-  <img src="docs/screenshots/chart-pie.png" width="700" alt="Vista torta" /><br />
-  <em>Vista torta (toggle Barre / Torta sulla card)</em>
-</p>
-<p align="center">
-  <img src="docs/screenshots/settings.png" width="700" alt="Impostazioni profilo" /><br />
-  <em>Pannello impostazioni profilo</em>
-</p>
+
+<img src="docs/screenshots/chart-pie.png" width="700" alt="Vista torta" />
+
+*Vista torta (toggle Barre / Torta sulla card)*
+
+<br />
+
+<img src="docs/screenshots/settings.png" width="700" alt="Impostazioni profilo" />
+
+*Pannello impostazioni profilo*
 </details>
 
 <details>
@@ -207,4 +213,6 @@ ufficiali: [OpenCode brand](https://opencode.ai/brand) (progetto MIT, anche per 
 Commons (uso referenziale: identificano solo
 la sorgente dei token nelle tue statistiche). Tutti i marchi citati appartengono ai
 rispettivi proprietari.
+</details>
+
 </details>
