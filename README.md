@@ -10,7 +10,7 @@ Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-purple)
 ![React 19](https://img.shields.io/badge/React-19-cyan)
 &nbsp;·&nbsp;
-[🇬🇧 English](#opencode-stats) · [🇮🇹 Italiano](#italiano)
+[![EN](https://img.shields.io/badge/EN-English-blue)](#opencode-stats) [![IT](https://img.shields.io/badge/IT-Italiano-green)](#italiano)
 
 **⬇️ [Download v0.1.3](https://github.com/terzastella/opencode-stats/releases)** — Windows setup + portable `.exe`.
 
@@ -108,9 +108,9 @@ All trademarks belong to their respective owners.
 
 ---
 
-## Italiano 🇮🇹
+## Italiano
 
-*Versione italiana — [English](#opencode-stats) sopra · [⬇️ Download v0.1.3](https://github.com/terzastella/opencode-stats/releases)*
+*🇮🇹 Versione italiana — [English](#opencode-stats) sopra · [⬇️ Download v0.1.3](https://github.com/terzastella/opencode-stats/releases)*
 
 Dashboard desktop leggera (**Tauri v2**, `.exe` ~10 MB, ~30 MB RAM) per le statistiche di
 utilizzo di OpenCode: input/output tokens, costo, viste giornaliere/settimanali/tutto,
