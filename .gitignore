@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Secrets / local data (never commit real credentials or databases)
+.env*
+*.db
+*.sqlite*
+*.tsbuildinfo
+
+# OS
+Thumbs.db
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

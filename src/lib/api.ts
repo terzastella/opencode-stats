@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Dashboard, DayStat, DbInfo, ModelStat, Overview, SessionRow } from "./types";
+import type { Dashboard, DbInfo, SelectionStats, SessionRow } from "./types";
 import { demoDashboard, demoDb, demoSessions, isDemo, isSkewedDemo } from "./demo";
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -10,9 +10,6 @@ const demo = typeof window !== "undefined" && isDemo();
 
 export const api = {
   dbInfo: () => (demo ? Promise.resolve(demoDb()) : call<DbInfo>("db_info")),
-  overview: (days: number) => call<Overview>("overview", { days }),
-  dailyStats: (days: number) => call<DayStat[]>("daily_stats", { days }),
-  modelStats: (days: number) => call<ModelStat[]>("model_stats", { days }),
   sessionList: (days: number, limit: number) =>
     demo
       ? Promise.resolve(demoSessions().slice(0, limit))
@@ -22,6 +19,14 @@ export const api = {
     demo
       ? Promise.resolve(demoDashboard(isSkewedDemo()))
       : call<Dashboard>("dashboard", { days }),
+  /**
+   * Selection honesty data (sessions per model + dominant provider per
+   * session). Called only when a provider filter is active; demo returns [].
+   */
+  selectionStats: (days: number) =>
+    demo
+      ? Promise.resolve({ model_sessions: [], session_providers: [] } as SelectionStats)
+      : call<SelectionStats>("selection_stats", { days }),
 };
 
 export function isTauriRuntime(): boolean {

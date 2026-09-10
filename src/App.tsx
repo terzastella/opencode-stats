@@ -4,10 +4,9 @@ import { BarChart, LineChart, PieChart } from "echarts/charts";
 import {
   GridComponent,
   LegendComponent,
-  TitleComponent,
   TooltipComponent,
 } from "echarts/components";
-import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
+import { SVGRenderer } from "echarts/renderers";
 import { api, isTauriRuntime } from "./lib/api";
 import { demoLang, demoSettings, demoView, isDemo } from "./lib/demo";
 import { STRINGS, type Lang } from "./lib/i18n";
@@ -20,21 +19,23 @@ import {
   type RangeKey,
   type ViewMode,
 } from "./lib/profile";
-import { providerGroup, type Bucket, type DayStat, type DbInfo, type ModelStat, type Overview, type SessionRow } from "./lib/types";
+import { providerGroup, type Bucket, type DayStat, type DbInfo, type ModelStat, type Overview, type SelectionStats, type SessionRow } from "./lib/types";
 import { providerColor } from "./lib/providers";
 import { ProviderMark } from "./lib/brand";
 import "./App.css";
 
-echarts.use([LineChart, BarChart, PieChart, GridComponent, LegendComponent, TitleComponent, TooltipComponent, CanvasRenderer, SVGRenderer]);
+echarts.use([LineChart, BarChart, PieChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
 
 const RANGE_DAYS: Record<RangeKey, number> = { daily: 14, weekly: 56, all: 365 };
 const REFRESH_MS = 30_000;
 
 function lastNDays(n: number): string[] {
   const out: string[] = [];
-  const d = new Date();
+  const today = new Date();
   for (let i = n - 1; i >= 0; i--) {
-    const t = new Date(d.getTime() - i * 86_400_000);
+    // setDate-based arithmetic: immune to DST midnight shifts.
+    const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    t.setDate(t.getDate() - i);
     out.push(toISO(t));
   }
   return out;
@@ -46,9 +47,11 @@ function toISO(d: Date): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-function weekStartMonday(iso: string): string {
+function weekStartMonday(iso: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
+  if (Number.isNaN(dt.getTime())) return null;
   const dow = (dt.getDay() + 6) % 7; // 0 = Monday
   const mon = new Date(dt.getTime() - dow * 86_400_000);
   return toISO(mon);
@@ -216,6 +219,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = profile.theme;
+    document.documentElement.lang = profile.lang;
     saveProfile(profile);
   }, [profile]);
 
@@ -383,7 +387,14 @@ export default function App() {
         api.dashboard(days),
         api.sessionList(days, 100),
       ]);
-      const sig = `${info.sessions}:${info.messages}:${dash.daily.length}:${dash.models.length}:${se.length}:${dash.overview.input}:${dash.overview.output}:${Math.round(dash.overview.cost * 10000)}`;
+      const sig = [
+        info.exists, info.path, info.sessions, info.messages,
+        dash.daily.length, dash.models.length, se.length,
+        dash.overview.input, dash.overview.output,
+        dash.overview.sessions, dash.overview.messages,
+        dash.overview.cacheRead, dash.overview.cacheWrite,
+        Math.round(dash.overview.cost * 10000),
+      ].join(":");
       if (sig !== sigRef.current || !loadedOnceRef.current) {
         sigRef.current = sig;
         setDbInfo(info);
@@ -408,11 +419,15 @@ export default function App() {
     } finally {
       refreshingRef.current = false;
     }
-  }, [profile.range, inTauri]);
+  }, [profile.range, inTauri, S]);
 
   // Boot: full-screen loader until everything is loaded, then the dashboard.
   // Safety timeout guarantees we never stay stuck on the loader.
+  // Mounted guard: StrictMode double-mount in dev must not fire boot twice.
+  const bootMountedRef = useRef(false);
   useEffect(() => {
+    if (bootMountedRef.current) return;
+    bootMountedRef.current = true;
     const safety = window.setTimeout(() => {
       setError((prev) => prev ?? S["err.slowStart"]);
       setBooted(true);
@@ -421,6 +436,7 @@ export default function App() {
       window.clearTimeout(safety);
       setBooted(true);
     });
+    return () => window.clearTimeout(safety);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -466,6 +482,47 @@ export default function App() {
   const selEmpty = filters.selected.length === 0;
   const groupPass = (g: string) => selEmpty || filters.selected.includes(g);
 
+  // Selection honesty data: fetched ONLY while a provider filter is active,
+  // so the default path pays zero extra queries.
+  const [selStats, setSelStats] = useState<SelectionStats | null>(null);
+  const selStatsRef = useRef(false);
+  useEffect(() => {
+    if (selEmpty) {
+      setSelStats(null);
+      return;
+    }
+    if (selStatsRef.current) return;
+    selStatsRef.current = true;
+    const days = RANGE_DAYS[profile.range];
+    api
+      .selectionStats(days)
+      .then((st) => setSelStats(st))
+      .catch(() => setSelStats(null))
+      .finally(() => {
+        selStatsRef.current = false;
+      });
+  }, [selEmpty, filters.selected, profile.range]);
+
+  /** session_id -> dominant provider (by input), only while filtered. */
+  const sessionProviders = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const sp of selStats?.session_providers ?? []) {
+      if (sp.session_id) map.set(sp.session_id, sp.provider);
+    }
+    return map;
+  }, [selStats]);
+
+  /** Distinct sessions per selected (provider, model), from selection stats. */
+  const selSessions = useMemo(() => {
+    if (!selStats) return 0;
+    let n = 0;
+    for (const m of selStats.model_sessions) {
+      const g = providerGroup(m.provider);
+      if (filters.selected.includes(g)) n += m.sessions;
+    }
+    return n;
+  }, [selStats, filters.selected]);
+
   const buckets: Bucket[] = useMemo(() => {
     const days = RANGE_DAYS[range];
     const map = new Map<string, Bucket>();
@@ -477,9 +534,16 @@ export default function App() {
       }
       return b;
     };
+    const bucketKey = (day: string): string | null => {
+      if (range === "weekly" || range === "all") return weekStartMonday(day);
+      return day;
+    };
     const add = (r: DayStat) => {
       if (!groupPass(providerGroup(r.provider))) return;
-      const key = range === "weekly" ? weekStartMonday(r.day) : r.day;
+      const key = bucketKey(r.day);
+      if (!key) return;
+      // Daily view: ignore rows outside the visible window (stale/odd days).
+      if (range === "daily" && !map.has(key)) return;
       const b = get(key);
       b.input += r.input;
       b.output += r.output;
@@ -490,26 +554,16 @@ export default function App() {
       for (const r of daily) add(r);
       return [...map.keys()].sort().slice(-8).map((k) => map.get(k)!);
     }
-    const keys =
-      range === "all"
-        ? [...new Set(daily.map((r) => r.day))].sort().slice(-60)
-        : lastNDays(days);
-    for (const k of keys) get(k);
-    for (const r of daily) {
-      if (range !== "all") {
-        add(r);
-        continue;
-      }
-      const b = map.get(r.day);
-      if (!b || !groupPass(providerGroup(r.provider))) continue;
-      b.input += r.input;
-      b.output += r.output;
-      b.cost += r.cost;
-      b.messages += r.messages;
+    if (range === "all") {
+      // Honest aggregation: one bucket per week over the whole range.
+      for (const r of daily) add(r);
+      return [...map.keys()].sort().slice(-60).map((k) => map.get(k)!);
     }
-    return [...map.values()];
+    for (const k of lastNDays(days)) get(k);
+    for (const r of daily) add(r);
+    return [...map.keys()].sort().map((k) => map.get(k)!);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [daily, range, filters.selected]);
+  }, [daily, range, lang, filters.selected]);
 
   /** Per-provider totals aligned with `buckets` (for "Singoli" line chart, max 6 groups). */
   const splitGroups = useMemo(() => {
@@ -521,7 +575,9 @@ export default function App() {
       const g = providerGroup(r.provider);
       const arr = data.get(g);
       if (!arr) continue;
-      const key = range === "weekly" ? weekStartMonday(r.day) : r.day;
+      // Same bucketing as `buckets` (weekly keys for weekly/all ranges).
+      const key = range === "daily" ? r.day : weekStartMonday(r.day);
+      if (!key) continue;
       const i = idx.get(key);
       if (i === undefined) continue;
       arr[i] += r.input + r.output;
@@ -580,7 +636,12 @@ export default function App() {
     const base =
       overview ?? { sessions: 0, messages: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0 };
     if (selEmpty) return base;
-    let input = 0, output = 0, cost = 0, messages = 0;
+    let input = 0,
+      output = 0,
+      cost = 0,
+      messages = 0,
+      cacheRead = 0,
+      cacheWrite = 0;
     for (const r of daily) {
       if (!filters.selected.includes(providerGroup(r.provider))) continue;
       input += r.input;
@@ -588,8 +649,16 @@ export default function App() {
       cost += r.cost;
       messages += r.messages;
     }
-    return { ...base, input, output, cost, messages };
-  }, [overview, daily, filters.selected, selEmpty]);
+    for (const m of models) {
+      if (!filters.selected.includes(providerGroup(m.provider))) continue;
+      cacheRead += m.cacheRead;
+      cacheWrite += m.cacheWrite;
+    }
+    // Sessions come from selection stats (distinct per model); falls back to
+    // the unfiltered count only while that fetch is still in flight.
+    const sessions = selStats ? selSessions : base.sessions;
+    return { ...base, input, output, cost, messages, cacheRead, cacheWrite, sessions };
+  }, [overview, daily, models, selStats, selSessions, filters.selected, selEmpty]);
 
   const fg = dark ? "#fafafa" : "#18181b";
   const faint = dark ? "#71717a" : "#a1a1aa";
@@ -709,7 +778,7 @@ export default function App() {
         backgroundColor: tipBg,
         borderColor: tipBorder,
         textStyle: { color: fg, fontSize: 12 },
-        valueFormatter: (value: number | string) => fmtCost(Number(value)),
+        valueFormatter: (value: number | string) => fmtCost(Number(value), lang),
       },
       grid: { left: 52, right: 14, top: 30, bottom: 26 },
       xAxis: {
@@ -927,7 +996,7 @@ export default function App() {
           >
             ⚙
           </button>
-          <div className="seg mini" role="group" aria-label="Language / Lingua">
+          <div className="seg mini" role="group" aria-label={S["lang.aria"]}>
             <button className={lang === "it" ? "seg-btn active" : "seg-btn"} onClick={() => setLang("it")}>
               IT
             </button>
@@ -995,8 +1064,8 @@ export default function App() {
         </div>
         <div className="kpi">
           <span className="kpi-label">{S["kpi.cost"]}</span>
-          <strong className="kpi-value">{totals ? fmtCost(totals.cost) : "—"}</strong>
-          <span className="kpi-sub">{S["kpi.cacheRead"]} {totals ? fmtCompact(totals.cacheRead) : "—"}</span>
+          <strong className="kpi-value">{totals ? fmtCost(totals.cost, lang) : "—"}</strong>
+          <span className="kpi-sub">{S["kpi.cacheRead"]} {totals ? fmtCompact(totals.cacheRead) : "—"} · {S["kpi.cacheWrite"]} {totals ? fmtCompact(totals.cacheWrite) : "—"}</span>
         </div>
         <div className="kpi">
           <span className="kpi-label">{S["kpi.msgsSessions"]}</span>
@@ -1058,7 +1127,7 @@ export default function App() {
                     <td className="num">{fmtInt(m.messages, lang)}</td>
                     <td className="num">{fmtCompact(m.input)}</td>
                     <td className="num">{fmtCompact(m.output)}</td>
-                    <td className="num">{fmtCost(m.cost)}</td>
+                    <td className="num">{fmtCost(m.cost, lang)}</td>
                   </tr>
                 ))}
                 {!tableRows.length && (
@@ -1085,14 +1154,24 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {sessions.slice(0, 15).map((s) => (
-                <tr key={s.id ?? Math.random()}>
+              {sessions
+                .filter((s) => {
+                  // Unfiltered: show everything. Filtered: only sessions whose
+                  // dominant provider is selected (sessions without message
+                  // attribution can't be attributed, so they're hidden).
+                  if (selEmpty) return true;
+                  const p = sessionProviders.get(s.id);
+                  return p !== undefined && filters.selected.includes(providerGroup(p));
+                })
+                .slice(0, 15)
+                .map((s, i) => (
+                <tr key={s.id || `${s.day}-${s.title}-${i}`}>
                   <td>{s.title || (s.id ?? "").slice(0, 12)}</td>
-                  <td className="mono dim">{(s.directory ?? "").split("\\").pop() || s.directory}</td>
-                  <td className="mono">{s.day}</td>
+                  <td className="mono dim">{(s.directory ?? "").split(/[\\/]/).pop() || s.directory}</td>
+                  <td className="mono">{fmtDayIT(s.day ?? "", lang)}</td>
                   <td className="num">{fmtCompact(s.input)}</td>
                   <td className="num">{fmtCompact(s.output)}</td>
-                  <td className="num">{fmtCost(s.cost)}</td>
+                  <td className="num">{fmtCost(s.cost, lang)}</td>
                 </tr>
               ))}
               {!sessions.length && (
@@ -1105,9 +1184,9 @@ export default function App() {
 
       <footer className="footer">
         <span className="mono dim">
-          {dbInfo ? `${dbInfo.path} · ${fmtBytes(dbInfo.sizeBytes)} · ${dbInfo.sessions} sess · ${dbInfo.messages} msg` : "db…"}
+          {dbInfo ? `${dbInfo.path} · ${fmtBytes(dbInfo.sizeBytes)} · ${fmtInt(dbInfo.sessions, lang)} ${S["footer.sessions"]} · ${fmtInt(dbInfo.messages, lang)} ${S["footer.messages"]}` : "db…"}
         </span>
-        <span className="dim">build {__BUILD_STAMP__}{diagMs != null ? ` · db ${diagMs}ms` : ""}{chartDiag ? ` · ${chartDiag}` : ""}{error ? ` · errore: ${error.slice(0, 80)}` : ""}</span>
+        <span className="dim">{S["footer.build"]} {__BUILD_STAMP__}{diagMs != null ? ` · ${S["footer.db"]} ${diagMs}ms` : ""}{chartDiag ? ` · ${chartDiag}` : ""}{error ? ` · ${S["footer.error"]} ${error.slice(0, 80)}` : ""}</span>
       </footer>
 
       {settingsOpen && (
@@ -1131,10 +1210,29 @@ export default function App() {
             aria-modal="true"
             aria-label={S["settings.title"]}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              // Minimal focus trap: keep Tab cycling inside the modal.
+              if (e.key !== "Tab") return;
+              const root = e.currentTarget;
+              const items = [...root.querySelectorAll<HTMLElement>(
+                'button, input, textarea, select, [tabindex]:not([tabindex="-1"])'
+              )].filter((el) => !el.hasAttribute("disabled"));
+              if (!items.length) return;
+              const first = items[0];
+              const last = items[items.length - 1];
+              const active = document.activeElement as HTMLElement | null;
+              if (e.shiftKey && (active === first || !root.contains(active))) {
+                e.preventDefault();
+                last.focus();
+              } else if (!e.shiftKey && active === last) {
+                e.preventDefault();
+                first.focus();
+              }
+            }}
           >
             <div className="modal-head">
               <h2>{S["settings.title"]}</h2>
-              <button className="pill small" onClick={() => setSettingsOpen(false)}>
+              <button className="pill small" autoFocus onClick={() => setSettingsOpen(false)}>
                 {S["settings.close"]}
               </button>
             </div>

@@ -1,4 +1,4 @@
-import { detectLang, type Lang } from "./i18n";
+import { detectLang, STRINGS, type Lang } from "./i18n";
 
 export type Theme = "dark" | "light";
 export type RangeKey = "daily" | "weekly" | "all";
@@ -7,7 +7,6 @@ export type ProviderView = "bars" | "pie";
 
 export interface Profile {
   name: string;
-  emoji: string;
   theme: Theme;
   range: RangeKey;
   viewMode: ViewMode;
@@ -26,7 +25,6 @@ const PHOTO_MAX = 200_000;
 
 const DEFAULTS: Profile = {
   name: "Il mio workspace",
-  emoji: "📊",
   theme: "dark",
   range: "daily",
   viewMode: "sum",
@@ -45,14 +43,13 @@ function cleanPhoto(v: unknown): string {
 
 export function loadProfile(): Profile {
   const lang = detectLang();
-  const defaultName = lang === "en" ? "My workspace" : DEFAULTS.name;
+  const defaultName = STRINGS[lang]["profile.defaultName"];
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { ...DEFAULTS, lang, name: defaultName };
     const p = JSON.parse(raw) as Partial<Profile>;
     return {
       name: typeof p.name === "string" && p.name.trim() ? p.name : defaultName,
-      emoji: typeof p.emoji === "string" && p.emoji ? p.emoji : DEFAULTS.emoji,
       theme: p.theme === "light" ? "light" : "dark",
       range: p.range === "weekly" || p.range === "all" ? p.range : "daily",
       viewMode: p.viewMode === "split" ? "split" : "sum",
@@ -73,8 +70,6 @@ export function saveProfile(p: Profile): void {
     /* storage unavailable */
   }
 }
-
-export const EMOJI_CHOICES = ["📊", "🚀", "🧠", "⚡", "🦙", "🤖", "💻", "📈"];
 
 export const DESC_MAX_LENGTH = DESC_MAX;
 export const PHOTO_MAX_BYTES = PHOTO_MAX;

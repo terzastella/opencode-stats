@@ -1,1 +1,12 @@
 * text=auto
+
+# Binary assets: never normalize line endings
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.jpeg binary
+
+# Generated lockfiles: keep in repo, hide from language stats
+package-lock.json linguist-generated
+Cargo.lock linguist-generated

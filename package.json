@@ -1,7 +1,7 @@
 {
   "name": "opencode-stats",
-  "version": "0.1.1",
-  "description": "Lightweight desktop dashboard for OpenCode token usage and costs (Tauri + React)",
+  "version": "0.1.2",
+  "description": "Lightweight desktop dashboard for OpenCode token usage and costs (Tauri v2 + React)",
   "author": "terzastella",
   "license": "MIT",
   "repository": {
@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2",
     "echarts": "^6.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

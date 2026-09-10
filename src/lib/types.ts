@@ -51,6 +51,22 @@ export interface SessionRow {
   updatedMs: number;
 }
 
+export interface ModelSessions {
+  provider: string;
+  model: string;
+  sessions: number;
+}
+
+export interface SessionProvider {
+  session_id: string;
+  provider: string;
+}
+
+export interface SelectionStats {
+  model_sessions: ModelSessions[];
+  session_providers: SessionProvider[];
+}
+
 /** Single-scan dashboard payload (overview + daily + models). */
 export interface Dashboard {
   overview: Overview;
@@ -59,7 +75,9 @@ export interface Dashboard {
 }
 
 /** Provider group = text before first "/" (e.g. "ollama/qwen3:8b" -> "ollama"). */
-export function providerGroup(provider: string): string {
+/** Never throws: unexpected DB values map to "unknown" instead of crashing render. */
+export function providerGroup(provider: string | null | undefined): string {
+  if (typeof provider !== "string" || !provider) return "unknown";
   const i = provider.indexOf("/");
   return (i > 0 ? provider.slice(0, i) : provider).toLowerCase();
 }

@@ -1,4 +1,5 @@
 <p align="center">
+  <a id="en"></a>
   <img src="src-tauri/icons/icon.png" width="96" alt="OpenCode Stats logo" />
 </p>
 
@@ -10,9 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.1</b></a>
+  <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.2</b></a>
   &nbsp;·&nbsp;
-  <a href="#opencode-stats-1">🇮🇹 Italiano</a>
+  <a href="#it">🇮🇹 Italiano</a>
 </p>
 
 <p align="center">
@@ -52,7 +53,8 @@
 <summary><b>How data works</b></summary>
 <br />
 
-It reads `~/.local/share/opencode/opencode.db` read-only (`OPENCODE_DB_PATH` override):
+It reads `~/.local/share/opencode/opencode.db` read-only (`OPENCODE_DB_PATH` override —
+on Windows: `%USERPROFILE%\.local\share\opencode\opencode.db`):
 
 - `message.data` (JSON: `role/providerID/modelID/tokens/cost`) → KPIs, daily/weekly, per-provider split
 - `session` (`cost/tokens_*` aggregates) → recent sessions list
@@ -80,7 +82,7 @@ Without Tauri (`npm run dev`) the UI shows a warning because Rust invokes are un
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.1_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.2_x64-setup.exe (+ .msi)
 ```
 
 > Note: if you change icons or `tauri.conf.json` and the exe doesn't pick them up,
@@ -93,24 +95,27 @@ npm run tauri build
 <summary><b>Project structure & legal</b></summary>
 <br />
 
-- `src-tauri/src/stats.rs` — read-only SQLite queries + `db_info/overview/daily_stats/model_stats/session_list/dashboard` commands
+- `src-tauri/src/stats.rs` — read-only SQLite queries + `db_info/session_list/dashboard/selection_stats` commands
 - `src/lib/` — `api.ts`, `types.ts`, `format.ts`, `profile.ts` (`localStorage` profile), `providers.ts` (stable provider colors), `brand.tsx` (provider logos), `i18n.ts` (EN/IT), `demo.ts` (`?demo` dataset)
-- `src/App.tsx` — dashboard: KPIs, ECharts charts (tokens/cost/per-provider), top models, sessions
+- `src/App.tsx` — dashboard: KPIs, ECharts charts (tokens/cost/per-provider bars+donut), top models, sessions
 - Silent refresh every 30 s (pausable) + refresh on focus, light/dark theme, Daily (14 d) / Weekly (8 wks) / All ranges
 
-Provider icons come from [Simple Icons](https://simple-icons.org) (CC0, bundled locally —
+Provider icons come from [Simple Icons](https://simple-icons.org) v16.30.0 (CC0, bundled locally —
 no external loading). Additional marks vectorized from official sources:
 [OpenCode brand](https://opencode.ai/brand) (MIT project, also for Zen),
-Groq and Cerebras logos via Wikimedia Commons (referential use: they only identify
-the token source in your statistics). All trademarks belong to their respective owners.
+[Groq logo](https://commons.wikimedia.org/wiki/File:Groq_logo.svg) and
+[Cerebras logo](https://commons.wikimedia.org/wiki/File:Cerebras_logo.svg) via Wikimedia
+Commons (referential use: they only identify the token source in your statistics).
+All trademarks belong to their respective owners.
 </details>
 
 ---
 
+<a id="it"></a>
 # OpenCode Stats
 
 <p align="center">
-  🇮🇹 Versione italiana — <a href="#opencode-stats">English</a> sopra · <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.1</b></a>
+  🇮🇹 Versione italiana — <a href="#en">English</a> sopra · <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.2</b></a>
 </p>
 
 Dashboard desktop leggera (**Tauri v2**, `.exe` ~10 MB, ~30 MB RAM) per le statistiche di
@@ -147,7 +152,8 @@ grafici e tabelle, profilo personalizzabile, interfaccia EN/IT.
 <summary><b>Come funzionano i dati</b></summary>
 <br />
 
-Legge in read-only `~/.local/share/opencode/opencode.db` (override con `OPENCODE_DB_PATH`):
+Legge in read-only `~/.local/share/opencode/opencode.db` (override con `OPENCODE_DB_PATH` —
+su Windows: `%USERPROFILE%\.local\share\opencode\opencode.db`):
 
 - `message.data` (JSON: `role/providerID/modelID/tokens/cost`) → KPI, daily/weekly, split per provider
 - `session` (aggregati `cost/tokens_*`) → lista sessioni recenti
@@ -175,7 +181,7 @@ Senza Tauri (`npm run dev`) l'UI mostra un avviso perché gli invoke Rust non so
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.1_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.2_x64-setup.exe (+ .msi)
 ```
 
 > Nota: se cambi icone o `tauri.conf.json` e l'exe non li recepisce, cancella
@@ -188,15 +194,17 @@ npm run tauri build
 <summary><b>Struttura progetto e note legali</b></summary>
 <br />
 
-- `src-tauri/src/stats.rs` — query SQLite read-only + comandi `db_info/overview/daily_stats/model_stats/session_list/dashboard`
+- `src-tauri/src/stats.rs` — query SQLite read-only + comandi `db_info/session_list/dashboard/selection_stats`
 - `src/lib/` — `api.ts`, `types.ts`, `format.ts`, `profile.ts` (profilo in `localStorage`), `providers.ts` (colori stabili per provider), `brand.tsx` (loghi provider), `i18n.ts` (EN/IT), `demo.ts` (dataset `?demo`)
-- `src/App.tsx` — dashboard: KPI, grafici ECharts (token/costo/per-provider), top modelli, sessioni
+- `src/App.tsx` — dashboard: KPI, grafici ECharts (token/costo/per-provider barre+torta), top modelli, sessioni
 - Refresh silenzioso ogni 30 s (pausabile) + refresh su focus, tema chiaro/scuro, range Giornaliero (14 gg) / Settimanale (8 sett) / Tutto
 
-Le icone dei provider vengono da [Simple Icons](https://simple-icons.org) (CC0, bundle
+Le icone dei provider vengono da [Simple Icons](https://simple-icons.org) v16.30.0 (CC0, bundle
 locale — nessun caricamento esterno). Marchi aggiuntivi vettorializzati dalle fonti
 ufficiali: [OpenCode brand](https://opencode.ai/brand) (progetto MIT, anche per Zen),
-logo Groq e logo Cerebras da Wikimedia Commons (uso referenziale: identificano solo
+[logo Groq](https://commons.wikimedia.org/wiki/File:Groq_logo.svg) e
+[logo Cerebras](https://commons.wikimedia.org/wiki/File:Cerebras_logo.svg) da Wikimedia
+Commons (uso referenziale: identificano solo
 la sorgente dei token nelle tue statistiche). Tutti i marchi citati appartengono ai
 rispettivi proprietari.
 </details>

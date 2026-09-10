@@ -54,9 +54,10 @@ function hexToHsl(hex: string): [number, number, number] {
 /**
  * Color for a provider group in the given theme.
  * Always returns the same color for the same group+theme.
+ * Never throws: unexpected input falls back to a hashed hue.
  */
-export function providerColor(group: string, theme: ThemeName): string {
-  const g = group.toLowerCase();
+export function providerColor(group: unknown, theme: ThemeName): string {
+  const g = typeof group === "string" && group ? group.toLowerCase() : "unknown";
   const fixed = FIXED[g];
   if (fixed) {
     if (theme === "dark") return fixed;

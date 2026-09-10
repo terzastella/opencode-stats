@@ -1,9 +1,16 @@
 import type { Dashboard, DbInfo, DayStat, SessionRow } from "./types";
 
 /**
- * Demo dataset (?demo in URL, ?demo=skewed for a dominant-provider
- * distribution like real data) for UI testing without Tauri backend.
+ * Demo dataset for UI testing without Tauri backend (npm run dev).
  * Also useful for screenshots and GitHub previews.
+ *
+ * Supported URL params (combinable):
+ *   ?demo            balanced dataset (3 providers)
+ *   ?demo=skewed     dominant-provider distribution like real data (~92/6/2)
+ *   ?demo=settings   opens the settings panel on boot
+ *   ?demo=crop       opens the photo crop editor with a synthetic test image
+ *   ?view=pie|bars   forces the provider chart type
+ *   ?lang=it|en      forces the interface language
  */
 function daysBack(n: number): string {
   const d = new Date(Date.now() - n * 86_400_000);

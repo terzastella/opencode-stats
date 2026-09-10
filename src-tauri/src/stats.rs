@@ -6,6 +6,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const DAY_MS: i64 = 86_400_000;
 
+/// All `time_created`/`time_updated` columns are **milliseconds** since epoch
+/// (verified against live data: values ~1.7e12; seconds would be ~1.7e9 and
+/// every range query would silently return zero rows).
+
 /// Resolve the opencode SQLite path.
 /// Priority: $OPENCODE_DB_PATH env -> $HOME/.local/share/opencode/opencode.db
 pub fn opencode_db_path() -> PathBuf {
@@ -44,6 +48,21 @@ fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
+}
+
+fn cutoff_ms(days: u32) -> i64 {
+    let days = days.clamp(1, 365) as i64;
+    now_ms().saturating_sub(days.saturating_mul(DAY_MS))
+}
+
+/// Non-finite floats are not valid JSON (serde_json would fail the whole
+/// invoke), so every cost is sanitized before leaving Rust.
+fn fin(f: f64) -> f64 {
+    if f.is_finite() {
+        f
+    } else {
+        0.0
+    }
 }
 
 #[derive(Serialize)]
@@ -109,10 +128,12 @@ pub struct Overview {
     pub cost: f64,
 }
 
+// CAST AS TEXT: a single non-string provider/model value must never fail
+// the whole row decode (r.get::<String> errors on INTEGER).
 const PROVIDER_SQL: &str =
-    "COALESCE(json_extract(data,'$.providerID'), json_extract(data,'$.model.providerID'), 'unknown')";
+    "COALESCE(CAST(json_extract(data,'$.providerID') AS TEXT), CAST(json_extract(data,'$.model.providerID') AS TEXT), 'unknown')";
 const MODEL_SQL: &str =
-    "COALESCE(json_extract(data,'$.modelID'), json_extract(data,'$.model.modelID'), 'unknown')";
+    "COALESCE(CAST(json_extract(data,'$.modelID') AS TEXT), CAST(json_extract(data,'$.model.modelID') AS TEXT), 'unknown')";
 
 pub fn db_info_inner() -> Result<DbInfo, String> {
     let path = opencode_db_path();
@@ -128,12 +149,13 @@ pub fn db_info_inner() -> Result<DbInfo, String> {
         });
     }
     let conn = open_ro(&path)?;
+    // Propagate (don't mask): a corrupt schema must surface, not read as zero.
     let sessions: i64 = conn
         .query_row("SELECT COUNT(*) FROM session", [], |r| r.get(0))
-        .unwrap_or(0);
+        .map_err(|e| format!("sessions count failed: {e}"))?;
     let messages: i64 = conn
         .query_row("SELECT COUNT(*) FROM message", [], |r| r.get(0))
-        .unwrap_or(0);
+        .map_err(|e| format!("messages count failed: {e}"))?;
     Ok(DbInfo {
         path: path.to_string_lossy().to_string(),
         exists,
@@ -143,127 +165,10 @@ pub fn db_info_inner() -> Result<DbInfo, String> {
     })
 }
 
-pub fn overview_inner(days: u32) -> Result<Overview, String> {
-    let path = opencode_db_path();
-    let conn = open_ro(&path)?;
-    let cutoff = now_ms() - (days as i64) * DAY_MS;
-    let sql = format!(
-        "SELECT COUNT(*), COUNT(DISTINCT session_id),
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.input'),0)),0),
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.output'),0)),0),
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.read'),0)),0),
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.write'),0)),0),
-            COALESCE(SUM(COALESCE(json_extract(data,'$.cost'),0.0)),0.0)
-         FROM message
-         WHERE time_created >= ?1 AND json_extract(data,'$.role') = 'assistant'"
-    );
-    let _ = PROVIDER_SQL;
-    conn.query_row(&sql, [cutoff], |r| {
-        Ok(Overview {
-            messages: r.get(0)?,
-            sessions: r.get(1)?,
-            input: r.get(2)?,
-            output: r.get(3)?,
-            cache_read: r.get(4)?,
-            cache_write: r.get(5)?,
-            cost: r.get(6)?,
-        })
-    })
-    .map_err(|e| format!("overview query failed: {e}"))
-}
-
-pub fn daily_stats_inner(days: u32) -> Result<Vec<DayStat>, String> {
-    let path = opencode_db_path();
-    let conn = open_ro(&path)?;
-    let cutoff = now_ms() - (days as i64) * DAY_MS;
-    let sql = format!(
-        "SELECT date(datetime(time_created/1000,'unixepoch','localtime')) AS day,
-            {provider} AS provider, {model} AS model,
-            COUNT(*) AS messages,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.input'),0)),0) AS input,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.output'),0)),0) AS output,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.read'),0)),0) AS cache_read,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.write'),0)),0) AS cache_write,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.cost'),0.0)),0.0) AS cost
-         FROM message
-         WHERE time_created >= ?1 AND json_extract(data,'$.role') = 'assistant'
-         GROUP BY day, provider, model
-         ORDER BY day ASC",
-        provider = PROVIDER_SQL,
-        model = MODEL_SQL
-    );
-    let mut stmt = conn
-        .prepare(&sql)
-        .map_err(|e| format!("daily prepare failed: {e}"))?;
-    let rows = stmt
-        .query_map([cutoff], |r| {
-            Ok(DayStat {
-                day: r.get(0)?,
-                provider: r.get(1)?,
-                model: r.get(2)?,
-                messages: r.get(3)?,
-                input: r.get(4)?,
-                output: r.get(5)?,
-                cache_read: r.get(6)?,
-                cache_write: r.get(7)?,
-                cost: r.get(8)?,
-            })
-        })
-        .map_err(|e| format!("daily query failed: {e}"))?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row.map_err(|e| format!("row decode failed: {e}"))?);
-    }
-    Ok(out)
-}
-
-pub fn model_stats_inner(days: u32) -> Result<Vec<ModelStat>, String> {
-    let path = opencode_db_path();
-    let conn = open_ro(&path)?;
-    let cutoff = now_ms() - (days as i64) * DAY_MS;
-    let sql = format!(
-        "SELECT {provider} AS provider, {model} AS model,
-            COUNT(*) AS messages,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.input'),0)),0) AS input,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.output'),0)),0) AS output,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.read'),0)),0) AS cache_read,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.write'),0)),0) AS cache_write,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.cost'),0.0)),0.0) AS cost
-         FROM message
-         WHERE time_created >= ?1 AND json_extract(data,'$.role') = 'assistant'
-         GROUP BY provider, model
-         ORDER BY input DESC",
-        provider = PROVIDER_SQL,
-        model = MODEL_SQL
-    );
-    let mut stmt = conn
-        .prepare(&sql)
-        .map_err(|e| format!("models prepare failed: {e}"))?;
-    let rows = stmt
-        .query_map([cutoff], |r| {
-            Ok(ModelStat {
-                provider: r.get(0)?,
-                model: r.get(1)?,
-                messages: r.get(2)?,
-                input: r.get(3)?,
-                output: r.get(4)?,
-                cache_read: r.get(5)?,
-                cache_write: r.get(6)?,
-                cost: r.get(7)?,
-            })
-        })
-        .map_err(|e| format!("models query failed: {e}"))?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row.map_err(|e| format!("row decode failed: {e}"))?);
-    }
-    Ok(out)
-}
-
 pub fn session_list_inner(days: u32, limit: u32) -> Result<Vec<SessionRow>, String> {
     let path = opencode_db_path();
     let conn = open_ro(&path)?;
-    let cutoff = now_ms() - (days as i64) * DAY_MS;
+    let cutoff = cutoff_ms(days);
     let limit = limit.clamp(1, 500) as i64;
     let mut stmt = conn
         .prepare(
@@ -295,14 +200,16 @@ pub fn session_list_inner(days: u32, limit: u32) -> Result<Vec<SessionRow>, Stri
         .map_err(|e| format!("sessions query failed: {e}"))?;
     let mut out = Vec::new();
     for row in rows {
-        out.push(row.map_err(|e| format!("row decode failed: {e}"))?);
+        let mut s = row.map_err(|e| format!("row decode failed: {e}"))?;
+        s.cost = fin(s.cost);
+        out.push(s);
     }
     Ok(out)
 }
 
 /// Combined dashboard payload: ONE grouped message scan feeds daily rows,
-/// per-model aggregates and overview sums (plus one cheap count query).
-/// Replaces 3 separate full scans (overview + daily + models).
+/// per-model aggregates and overview sums, plus one cheap count-only scan
+/// for session/message totals (two scans total, replacing three).
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DashboardData {
@@ -314,7 +221,7 @@ pub struct DashboardData {
 pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
     let path = opencode_db_path();
     let conn = open_ro(&path)?;
-    let cutoff = now_ms() - (days as i64) * DAY_MS;
+    let cutoff = cutoff_ms(days);
     let sql = format!(
         "SELECT date(datetime(time_created/1000,'unixepoch','localtime')) AS day,
             {provider} AS provider, {model} AS model,
@@ -362,21 +269,22 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
         cost: 0.0,
     };
     for row in rows {
-        let d = row.map_err(|e| format!("row decode failed: {e}"))?;
-        overview.messages += d.messages;
-        overview.input += d.input;
-        overview.output += d.output;
-        overview.cache_read += d.cache_read;
-        overview.cache_write += d.cache_write;
+        let mut d = row.map_err(|e| format!("row decode failed: {e}"))?;
+        d.cost = fin(d.cost);
+        overview.messages = overview.messages.saturating_add(d.messages);
+        overview.input = overview.input.saturating_add(d.input);
+        overview.output = overview.output.saturating_add(d.output);
+        overview.cache_read = overview.cache_read.saturating_add(d.cache_read);
+        overview.cache_write = overview.cache_write.saturating_add(d.cache_write);
         overview.cost += d.cost;
         by_model
             .entry((d.provider.clone(), d.model.clone()))
             .and_modify(|m| {
-                m.messages += d.messages;
-                m.input += d.input;
-                m.output += d.output;
-                m.cache_read += d.cache_read;
-                m.cache_write += d.cache_write;
+                m.messages = m.messages.saturating_add(d.messages);
+                m.input = m.input.saturating_add(d.input);
+                m.output = m.output.saturating_add(d.output);
+                m.cache_read = m.cache_read.saturating_add(d.cache_read);
+                m.cache_write = m.cache_write.saturating_add(d.cache_write);
                 m.cost += d.cost;
             })
             .or_insert(ModelStat {
@@ -399,24 +307,116 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
             [cutoff],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
-        .unwrap_or((overview.messages, 0));
+        .map_err(|e| format!("dashboard count failed: {e}"))?;
     overview.messages = messages;
     overview.sessions = sessions;
 
     let mut models: Vec<ModelStat> = by_model.into_values().collect();
     models.sort_by(|a, b| b.input.cmp(&a.input));
     // Guard: non-finite floats are not valid JSON (would fail serialization).
-    if !overview.cost.is_finite() {
-        overview.cost = 0.0;
-    }
+    overview.cost = fin(overview.cost);
     for m in &mut models {
-        if !m.cost.is_finite() {
-            m.cost = 0.0;
-        }
+        m.cost = fin(m.cost);
     }
     Ok(DashboardData {
         overview,
         daily,
         models,
+    })
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelSessions {
+    pub provider: String,
+    pub model: String,
+    pub sessions: i64,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionProvider {
+    pub session_id: String,
+    pub provider: String,
+}
+
+/// Selection honesty data, fetched ONLY when a provider filter is active:
+/// distinct sessions per (provider, model), plus the dominant provider
+/// (by input tokens) of every session in range.
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectionStats {
+    pub model_sessions: Vec<ModelSessions>,
+    pub session_providers: Vec<SessionProvider>,
+}
+
+pub fn selection_stats_inner(days: u32) -> Result<SelectionStats, String> {
+    let path = opencode_db_path();
+    let conn = open_ro(&path)?;
+    let cutoff = cutoff_ms(days);
+    let sql_models = format!(
+        "SELECT {provider} AS provider, {model} AS model,
+            COUNT(DISTINCT session_id) AS sessions
+         FROM message
+         WHERE time_created >= ?1 AND json_extract(data,'$.role') = 'assistant'
+         GROUP BY provider, model",
+        provider = PROVIDER_SQL,
+        model = MODEL_SQL
+    );
+    let mut stmt = conn
+        .prepare(&sql_models)
+        .map_err(|e| format!("selection models prepare failed: {e}"))?;
+    let model_sessions: Vec<ModelSessions> = stmt
+        .query_map([cutoff], |r| {
+            Ok(ModelSessions {
+                provider: r.get(0)?,
+                model: r.get(1)?,
+                sessions: r.get(2)?,
+            })
+        })
+        .map_err(|e| format!("selection models query failed: {e}"))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("row decode failed: {e}"))?;
+
+    let sql_sessions = format!(
+        "SELECT session_id, {provider} AS provider,
+            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.input'),0)),0) AS input
+         FROM message
+         WHERE time_created >= ?1 AND json_extract(data,'$.role') = 'assistant'
+         GROUP BY session_id, provider",
+        provider = PROVIDER_SQL
+    );
+    let mut stmt2 = conn
+        .prepare(&sql_sessions)
+        .map_err(|e| format!("selection sessions prepare failed: {e}"))?;
+    let mut best: HashMap<String, (String, i64)> = HashMap::new();
+    let rows = stmt2
+        .query_map([cutoff], |r| {
+            let session_id: String = r.get(0)?;
+            let provider: String = r.get(1)?;
+            let input: i64 = r.get(2)?;
+            Ok((session_id, provider, input))
+        })
+        .map_err(|e| format!("selection sessions query failed: {e}"))?;
+    for row in rows {
+        let (session_id, provider, input) = row.map_err(|e| format!("row decode failed: {e}"))?;
+        best.entry(session_id)
+            .and_modify(|e| {
+                if input > e.1 {
+                    *e = (provider.clone(), input);
+                }
+            })
+            .or_insert((provider, input));
+    }
+    let session_providers = best
+        .into_iter()
+        .map(|(session_id, (provider, _))| SessionProvider {
+            session_id,
+            provider,
+        })
+        .collect();
+    Ok(SelectionStats {
+        model_sessions,
+        session_providers,
     })
 }

@@ -39,7 +39,8 @@ const BRANDS: Record<string, SimpleIcon> = {
   meta: siMeta,
 };
 
-export function brandIcon(group: string): SimpleIcon | null {
+function brandIcon(group: string): SimpleIcon | null {
+  if (typeof group !== "string" || !group) return null;
   return BRANDS[group.toLowerCase()] ?? null;
 }
 
@@ -104,6 +105,11 @@ const OFFICIAL: Record<string, () => JSX.Element> = {
 /** Wide marks (e.g. Zen wordmark) get a pill tile instead of a square one. */
 const WIDE_TILE = new Set(["zen"]);
 
+function officialMark(group: string): (() => JSX.Element) | null {
+  if (typeof group !== "string" || !group) return null;
+  return OFFICIAL[group.toLowerCase()] ?? null;
+}
+
 /**
  * Hand-drawn marks for providers without an official icon.
  * Plain letterforms (no trademarks involved), brand-flavored colors.
@@ -116,16 +122,17 @@ const CUSTOM: Record<string, { glyph: string; color: string }> = {
 export function ProviderMark({ group, theme }: { group: string; theme: "dark" | "light" }) {
   const icon = brandIcon(group);
   if (!icon) {
-    const Official = OFFICIAL[group.toLowerCase()];
+    const Official = officialMark(group);
     if (Official) {
-      const wide = WIDE_TILE.has(group.toLowerCase());
+      const wide = typeof group === "string" && WIDE_TILE.has(group.toLowerCase());
       return (
         <span className={wide ? "logo-tile wide" : "logo-tile"} title={group}>
           <Official />
         </span>
       );
     }
-    const custom = CUSTOM[group.toLowerCase()];
+    const custom =
+      typeof group === "string" && group ? CUSTOM[group.toLowerCase()] : undefined;
     if (custom) {
       return (
         <span className="logo-tile" title={group}>
