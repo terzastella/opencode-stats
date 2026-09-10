@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.2</b></a>
+  <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.3</b></a>
   &nbsp;·&nbsp;
   <a href="#it">🇮🇹 Italiano</a>
 </p>
@@ -82,7 +82,7 @@ Without Tauri (`npm run dev`) the UI shows a warning because Rust invokes are un
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.2_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.3_x64-setup.exe (+ .msi)
 ```
 
 > Note: if you change icons or `tauri.conf.json` and the exe doesn't pick them up,
@@ -115,7 +115,7 @@ All trademarks belong to their respective owners.
 # OpenCode Stats
 
 <p align="center">
-  🇮🇹 Versione italiana — <a href="#en">English</a> sopra · <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.2</b></a>
+  🇮🇹 Versione italiana — <a href="#en">English</a> sopra · <a href="https://github.com/terzastella/opencode-stats/releases"><b>⬇️ Download v0.1.3</b></a>
 </p>
 
 Dashboard desktop leggera (**Tauri v2**, `.exe` ~10 MB, ~30 MB RAM) per le statistiche di
@@ -181,7 +181,7 @@ Senza Tauri (`npm run dev`) l'UI mostra un avviso perché gli invoke Rust non so
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.2_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.3_x64-setup.exe (+ .msi)
 ```
 
 > Nota: se cambi icone o `tauri.conf.json` e l'exe non li recepisce, cancella
