@@ -1,0 +1,3 @@
+# Map the pre-rename identity to the current one so all commits
+# stay attributed to the same GitHub profile after the terzagit -> terzastella rename.
+Terzastella <326552342+terzastella@users.noreply.github.com> terzagit <326552342+terzagit@users.noreply.github.com>
