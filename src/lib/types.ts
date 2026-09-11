@@ -58,13 +58,13 @@ export interface ModelSessions {
 }
 
 export interface SessionProvider {
-  session_id: string;
+  sessionId: string;
   provider: string;
 }
 
 export interface SelectionStats {
-  model_sessions: ModelSessions[];
-  session_providers: SessionProvider[];
+  modelSessions: ModelSessions[];
+  sessionProviders: SessionProvider[];
 }
 
 /** Single-scan dashboard payload (overview + daily + models). */

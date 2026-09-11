@@ -513,11 +513,11 @@ export default function App() {
       });
   }, [selEmpty, filters.selected, profile.range]);
 
-  /** session_id -> dominant provider (by input), only while filtered. */
+  /** sessionId -> dominant provider (by input), only while filtered. */
   const sessionProviders = useMemo(() => {
     const map = new Map<string, string>();
-    for (const sp of selStats?.session_providers ?? []) {
-      if (sp.session_id) map.set(sp.session_id, sp.provider);
+    for (const sp of selStats?.sessionProviders ?? []) {
+      if (sp.sessionId) map.set(sp.sessionId, sp.provider);
     }
     return map;
   }, [selStats]);
@@ -526,7 +526,7 @@ export default function App() {
   const selSessions = useMemo(() => {
     if (!selStats) return 0;
     let n = 0;
-    for (const m of selStats.model_sessions) {
+    for (const m of selStats.modelSessions ?? []) {
       const g = providerGroup(m.provider);
       if (filters.selected.includes(g)) n += m.sessions;
     }
