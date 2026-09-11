@@ -627,6 +627,12 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.setup-hint {
+  font-size: 12px;
+  margin: 4px 0 12px;
+  text-align: center;
+}
+
 /* ——— Cards & charts ——— */
 .grid-2 {
   display: grid;

@@ -30,5 +30,9 @@ export const api = {
 };
 
 export function isTauriRuntime(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window;
+  if (typeof window === "undefined") return false;
+  const w = window as unknown as Record<string, unknown>;
+  // Tauri v2 always exposes __TAURI_INTERNALS__; __TAURI__ exists only with
+  // app.withGlobalTauri, which we don't enable. Check both.
+  return w.__TAURI_INTERNALS__ !== undefined || w.__TAURI__ !== undefined;
 }

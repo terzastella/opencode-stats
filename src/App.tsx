@@ -10,7 +10,7 @@ import { SVGRenderer } from "echarts/renderers";
 import { api, isTauriRuntime } from "./lib/api";
 import { demoLang, demoSettings, demoView, isDemo } from "./lib/demo";
 import { STRINGS, type Lang } from "./lib/i18n";
-import { fmtBytes, fmtCompact, fmtCost, fmtDayIT, fmtInt, timeHM } from "./lib/format";
+import { fmtBytes, fmtCompact, fmtCost, fmtCostCompact, fmtDayIT, fmtInt, timeHM } from "./lib/format";
 import {
   DESC_MAX_LENGTH,
   loadProfile,
@@ -205,6 +205,7 @@ export default function App() {
   const [selected, setSelected] = useState<string[]>([]);
   const [diagMs, setDiagMs] = useState<number | null>(null);
   const [chartDiag, setChartDiag] = useState<string | null>(null);
+  const [needsSetup, setNeedsSetup] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(() => isDemo() && demoSettings());
   // Where a modal-backdrop press started (text-selection guard, see below).
   const backdropPressRef = useRef(false);
@@ -382,8 +383,19 @@ export default function App() {
     if (opts?.manual === true || opts?.boot === true || !loadedOnceRef.current) setLoading(true);
     const t0 = performance.now();
     try {
-      const [info, dash, se] = await Promise.all([
-        api.dbInfo(),
+      // Cheap existence check FIRST: no database -> friendly setup screen,
+      // without burning full scans every tick. Auto-recovers when OpenCode
+      // appears later (the tick just runs the full flow again).
+      const info = await api.dbInfo();
+      setDbInfo(info);
+      if (!info.exists) {
+        setNeedsSetup(true);
+        setLoading(false);
+        setUpdatedMs(Date.now());
+        return;
+      }
+      setNeedsSetup(false);
+      const [dash, se] = await Promise.all([
         api.dashboard(days),
         api.sessionList(days, 100),
       ]);
@@ -397,13 +409,11 @@ export default function App() {
       ].join(":");
       if (sig !== sigRef.current || !loadedOnceRef.current) {
         sigRef.current = sig;
-        setDbInfo(info);
         setOverview(dash.overview);
         setDaily(dash.daily);
         setModels(dash.models);
         setSessions(se);
         setError(null);
-        if (!info.exists) setError(`${S["err.dbNotFound"]}${info.path}`);
       }
       loadedOnceRef.current = true;
       setLoading(false);
@@ -790,7 +800,7 @@ export default function App() {
       },
       yAxis: {
         type: "value",
-        axisLabel: { color: faint, fontSize: 10, formatter: (v: number) => "$" + fmtCompact(v) },
+        axisLabel: { color: faint, fontSize: 10, formatter: (v: number) => fmtCostCompact(v) },
         splitLine: { lineStyle: { color: grid } },
       },
       series: [
@@ -924,6 +934,25 @@ export default function App() {
               {S["boot.db"]}
             </li>
           </ul>
+        </div>
+      </div>
+    );
+  }
+
+  // Friendly empty state: OpenCode isn't installed (or has never run),
+  // so there is no database to read. No technical banners, no empty charts.
+  // Clears itself on the next tick once the database appears.
+  if (booted && needsSetup) {
+    return (
+      <div className="boot">
+        <div className="boot-card">
+          <div className="boot-logo">◧</div>
+          <h1>{S["setup.title"]}</h1>
+          <p className="boot-sub">{S["setup.sub"]}</p>
+          <p className="mono dim setup-hint">{S["setup.hint"]}</p>
+          <button className="pill" onClick={() => void refresh({ manual: true })} disabled={loading}>
+            {loading ? "…" : `↻ ${S["refresh"]}`}
+          </button>
         </div>
       </div>
     );

@@ -44,6 +44,17 @@ export function fmtCost(n: unknown, lang: Lang = "it"): string {
   return `${sign}$${abs.toLocaleString(locale, { maximumFractionDigits: 2 })}`;
 }
 
+/**
+ * Axis-friendly dollars: "$1.2K" for large values, trimmed decimals
+ * ("$0.05", "$1.5") for small ones so sub-dollar ticks never show "$0".
+ */
+export function fmtCostCompact(n: unknown): string {
+  const v = num(n);
+  if (v === 0) return "$0";
+  if (Math.abs(v) >= 1000) return "$" + fmtCompact(v);
+  return (v < 0 ? "-$" : "$") + trim(Math.abs(v).toFixed(4));
+}
+
 export function fmtBytes(n: unknown): string {
   const v = num(n);
   if (v >= 1_073_741_824) return (v / 1_073_741_824).toFixed(2) + " GB";
