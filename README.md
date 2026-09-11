@@ -82,6 +82,9 @@ npm run tauri build
 # -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.3_x64-setup.exe (+ .msi)
 ```
 
+For published releases, build with `scripts/build-release.ps1` instead: same output,
+but scrubs build-machine paths from the binary via `--remap-path-prefix`.
+
 > Note: if you change icons or `tauri.conf.json` and the exe doesn't pick them up,
 > delete `src-tauri/target/release/build/opencode-stats-*/` before rebuilding:
 > Tauri's build script (Windows resources/icons) doesn't always re-run on its own
@@ -183,6 +186,9 @@ npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
 # -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.3_x64-setup.exe (+ .msi)
 ```
+
+Per le release pubblicate, compila invece con `scripts/build-release.ps1`: stesso output,
+ma ripulisce i percorsi della macchina di build dal binario via `--remap-path-prefix`.
 
 > Nota: se cambi icone o `tauri.conf.json` e l'exe non li recepisce, cancella
 > `src-tauri/target/release/build/opencode-stats-*/` prima di rebuildare:
