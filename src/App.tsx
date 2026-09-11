@@ -953,6 +953,14 @@ export default function App() {
           <button className="pill" onClick={() => void refresh({ manual: true })} disabled={loading}>
             {loading ? "…" : `↻ ${S["refresh"]}`}
           </button>
+          <div className="seg mini" role="group" aria-label={S["lang.aria"]}>
+            <button className={lang === "it" ? "seg-btn active" : "seg-btn"} onClick={() => setLang("it")}>
+              IT
+            </button>
+            <button className={lang === "en" ? "seg-btn active" : "seg-btn"} onClick={() => setLang("en")}>
+              EN
+            </button>
+          </div>
         </div>
       </div>
     );
