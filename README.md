@@ -12,7 +12,7 @@ Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.
 &nbsp;·&nbsp;
 [![EN](https://img.shields.io/badge/EN-English-blue)](#opencode-stats) [![IT](https://img.shields.io/badge/IT-Italiano-green)](#italiano)
 
-**⬇️ [Download v0.1.4](https://github.com/terzastella/opencode-stats/releases)** — Windows setup + portable `.exe`.
+**⬇️ [Download v0.1.5](https://github.com/terzastella/opencode-stats/releases)** — Windows setup + portable `.exe`.
 
 <br />
 
@@ -30,6 +30,23 @@ Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.
 | 🔒 | 100% local: read-only DB access, no keys, no auth, no telemetry |
 
 <br />
+
+<details>
+<summary><b>Install & release notes</b></summary>
+<br />
+
+Download `OpenCode Stats_*_x64-setup.exe` (recommended) or the `.msi` from
+[Releases](https://github.com/terzastella/opencode-stats/releases).
+Requires Windows 10/11 x64 with WebView2 (usually preinstalled) and OpenCode
+used at least once (the app reads its local database).
+
+> The app is not code-signed: Windows shows "unknown publisher" — that's expected.
+> On SmartScreen: "More info → Run anyway".
+
+**v0.1.5** — "OpenCode is not installed" screen with IT/EN switch; readable
+sub-dollar cost axis; Terzastella publisher + custom installer icons;
+release build scrubbed of machine paths.
+</details>
 
 <details>
 <summary><b>More screenshots</b></summary>
@@ -79,7 +96,7 @@ Without Tauri (`npm run dev`) the UI shows a warning because Rust invokes are un
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.4_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.5_x64-setup.exe (+ .msi)
 ```
 
 For published releases, build with `scripts/build-release.ps1` instead: same output,
@@ -113,7 +130,7 @@ All trademarks belong to their respective owners.
 
 ## Italiano
 
-*🇮🇹 Versione italiana — [English](#opencode-stats) sopra · [⬇️ Download v0.1.4](https://github.com/terzastella/opencode-stats/releases)*
+*🇮🇹 Versione italiana — [English](#opencode-stats) sopra · [⬇️ Download v0.1.5](https://github.com/terzastella/opencode-stats/releases)*
 
 Dashboard desktop leggera (**Tauri v2**, `.exe` ~10 MB, ~30 MB RAM) per le statistiche di
 utilizzo di OpenCode: input/output tokens, costo, viste giornaliere/settimanali/tutto,
@@ -135,6 +152,23 @@ grafici e tabelle, profilo personalizzabile, interfaccia EN/IT.
 | 🔒 | 100% locale: sola lettura DB, niente chiavi, niente telemetria |
 
 <br />
+
+<details>
+<summary><b>Installazione e note di release</b></summary>
+<br />
+
+Scarica `OpenCode Stats_*_x64-setup.exe` (consigliato) o il `.msi` dalle
+[Release](https://github.com/terzastella/opencode-stats/releases).
+Richiede Windows 10/11 x64 con WebView2 (di solito già presente) e OpenCode
+già usato almeno una volta (l'app legge il suo database locale).
+
+> L'app non è firmata digitalmente: Windows mostra "autore sconosciuto" — è normale.
+> Su SmartScreen: "Ulteriori informazioni → Esegui comunque".
+
+**v0.1.5** — schermata "OpenCode non installato" con selettore IT/EN; tacche
+leggibili sull'asse dei costi sotto il dollaro; publisher Terzastella + icone
+installer; build release ripulita dai percorsi macchina.
+</details>
 
 <details>
 <summary><b>Altri screenshot</b></summary>
@@ -184,7 +218,7 @@ Senza Tauri (`npm run dev`) l'UI mostra un avviso perché gli invoke Rust non so
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.4_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.5_x64-setup.exe (+ .msi)
 ```
 
 Per le release pubblicate, compila invece con `scripts/build-release.ps1`: stesso output,
