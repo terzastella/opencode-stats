@@ -1,6 +1,6 @@
 [package]
 name = "opencode-stats"
-version = "0.1.6"
+version = "0.1.7"
 description = "Lightweight desktop dashboard for OpenCode token usage and costs"
 authors = ["terzastella"]
 edition = "2021"

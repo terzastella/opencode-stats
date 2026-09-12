@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-12
+
 ### Added
 - Timeout wrapper for Tauri invokes (`src/lib/tauri-safe.ts`): a stuck IPC
   call now surfaces as an error instead of freezing the refresh loop.
 - GitHub Actions CI (`.github/workflows/ci.yml`): frontend build on Ubuntu,
   full Tauri build on Windows, on every push/PR to `main`.
+
+### Security
+- Content Security Policy enabled: strict `script-src 'self'`, with explicit
+  allowances for Tauri IPC (`ipc:` + `ipc.localhost`), ECharts tooltip inline
+  styles, and data-URL avatars.
+
+### Changed
+- TypeScript pinned to exact 6.0.3 (lockfile already resolved to it).
 
 ## [0.1.6] - 2026-09-11
 
