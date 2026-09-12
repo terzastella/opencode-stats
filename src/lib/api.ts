@@ -1,9 +1,10 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invokeWithTimeout } from "./tauri-safe";
 import type { Dashboard, DbInfo, SelectionStats, SessionRow } from "./types";
 import { demoDashboard, demoDb, demoSessions, isDemo, isSkewedDemo } from "./demo";
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  return await invoke<T>(cmd, args);
+  // 15s: well above the worst cold scan, well below the 30s refresh tick.
+  return await invokeWithTimeout<T>(cmd, args, 15000);
 }
 
 const demo = typeof window !== "undefined" && isDemo();
