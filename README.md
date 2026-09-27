@@ -45,6 +45,8 @@ used at least once (the app reads its local database).
 > The app is not code-signed: Windows shows "unknown publisher" — that's expected.
 > On SmartScreen: "More info → Run anyway".
 
+**v0.1.9** — security hardening: ECharts stored-XSS guard, stricter CSP, photo
+allowlist, DB path/size checks; CI least-privilege + Dependabot.
 **v0.1.8** — fixed profile photo upload (valid images wrongly rejected as "over
 10 MB"); new GitHub-style token activity heatmap in profile settings.
 **v0.1.7** — Content Security Policy enabled; TypeScript pinned to exact 6.0.3;
@@ -104,7 +106,7 @@ Without Tauri (`npm run dev`) the UI shows a warning because Rust invokes are un
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.8_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.9_x64-setup.exe (+ .msi)
 ```
 
 For published releases, build with `scripts/build-release.ps1` instead: same output,
@@ -173,6 +175,8 @@ già usato almeno una volta (l'app legge il suo database locale).
 > L'app non è firmata digitalmente: Windows mostra "autore sconosciuto" — è normale.
 > Su SmartScreen: "Ulteriori informazioni → Esegui comunque".
 
+**v0.1.9** — hardening sicurezza: anti-XSS nei grafici, CSP rafforzata,
+allowlist foto, controlli path/dimensione DB; CI least-privilege + Dependabot.
 **v0.1.8** — corretto il caricamento della foto profilo (immagini valide
 scartate come "oltre 10 MB"); nuova heatmap stile GitHub dei token nelle
 impostazioni profilo.
@@ -233,7 +237,7 @@ Senza Tauri (`npm run dev`) l'UI mostra un avviso perché gli invoke Rust non so
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.8_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.9_x64-setup.exe (+ .msi)
 ```
 
 Per le release pubblicate, compila invece con `scripts/build-release.ps1`: stesso output,

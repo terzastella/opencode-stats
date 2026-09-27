@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-09-27
+
+### Security
+- Stored-XSS guard: provider names from the OpenCode DB are now HTML-escaped
+  in all ECharts tooltip/label formatters.
+- Hardened Tauri CSP (`object-src 'none'`, `base-uri 'self'`,
+  `frame-ancestors 'none'`).
+- Photo upload restricted to JPEG/PNG/WebP/GIF (pre-existing BMP/AVIF photos
+  reset to monogram on next load).
+- Database hardening: symlinks rejected, 2 GiB size cap, tolerant integer
+  decoding for aggregates.
+
+### Changed
+- `tauri` caret floor 2.11.1 (GHSA-7gmj-67g7-phm9), CI least-privilege with
+  pinned runners, Dependabot (npm/cargo/actions), dynamic CI/release badges,
+  evergreen download links, artifact gitignore/attributes.
+
 ## [0.1.8] - 2026-09-27
 
 ### Fixed
