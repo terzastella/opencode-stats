@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-09-27
+
+### Fixed
+- Profile photo upload: valid JPG/PNG files were wrongly rejected as
+  "over 10 MB". The app used `blob:` object URLs, which the Tauri CSP
+  (`img-src`) blocks — it now uses `FileReader` data URLs, with distinct
+  error messages for oversize / unsupported format / decode / save failures,
+  empty-MIME tolerance by extension, explicit HEIC/TIFF rejection, and a
+  JPEG quality loop so `cleanPhoto()` never silently discards the saved crop.
+
+### Added
+- GitHub-style token activity heatmap in profile settings: last 6 months of
+  daily input+output tokens, purple intensity levels, month/day labels and a
+  Less/More legend. Wide modal variant (1120px, no horizontal scroll, stacks
+  below 1080px), 18px cells with month alignment, skeleton/error/empty states
+  with retry, lazy 365d dashboard fetch with 30s cache, and a 365d demo
+  dataset. IT/EN strings included.
+
 ## [0.1.7] - 2026-09-12
 
 ### Added
