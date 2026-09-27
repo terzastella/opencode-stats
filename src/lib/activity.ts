@@ -2,6 +2,21 @@ import { providerGroup, type DayStat } from "./types";
 
 export type GroupPass = (group: string) => boolean;
 
+/** YYYY-MM bucket key, or null for malformed days. */
+export function monthKey(iso: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  return iso.slice(0, 7); // YYYY-MM
+}
+
+/** All-time bucketing: daily up to 90d, weekly up to ~18mo, monthly beyond. */
+export type Granularity = "day" | "week" | "month";
+
+export function granularityForSpan(spanDays: number): Granularity {
+  if (spanDays <= 90) return "day";
+  if (spanDays <= 540) return "week";
+  return "month";
+}
+
 function toISO(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -20,7 +35,7 @@ export function lastNDays(n: number): string[] {
   return out;
 }
 
-/** Sum input+output tokens per day, filling missing days with 0. */
+/** Sum input+output+reasoning tokens per day, filling missing days with 0. */
 export function aggregateTokensByDay(
   rows: DayStat[],
   groupPass: GroupPass,
@@ -30,7 +45,10 @@ export function aggregateTokensByDay(
   for (const r of rows) {
     if (!map.has(r.day)) continue;
     if (!groupPass(providerGroup(r.provider))) continue;
-    const v = (Number.isFinite(r.input) ? r.input : 0) + (Number.isFinite(r.output) ? r.output : 0);
+    const v =
+      (Number.isFinite(r.input) ? r.input : 0) +
+      (Number.isFinite(r.output) ? r.output : 0) +
+      (Number.isFinite(r.reasoning) ? r.reasoning : 0);
     map.set(r.day, (map.get(r.day) ?? 0) + v);
   }
   return map;

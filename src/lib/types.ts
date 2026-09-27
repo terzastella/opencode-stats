@@ -11,6 +11,7 @@ export interface Overview {
   messages: number;
   input: number;
   output: number;
+  reasoning: number;
   cacheRead: number;
   cacheWrite: number;
   cost: number;
@@ -23,6 +24,7 @@ export interface DayStat {
   messages: number;
   input: number;
   output: number;
+  reasoning: number;
   cacheRead: number;
   cacheWrite: number;
   cost: number;
@@ -34,6 +36,7 @@ export interface ModelStat {
   messages: number;
   input: number;
   output: number;
+  reasoning: number;
   cacheRead: number;
   cacheWrite: number;
   cost: number;
@@ -46,25 +49,24 @@ export interface SessionRow {
   cost: number;
   input: number;
   output: number;
+  reasoning: number;
   cacheRead: number;
   day: string;
   updatedMs: number;
 }
 
-export interface ModelSessions {
-  provider: string;
-  model: string;
-  sessions: number;
-}
-
-export interface SessionProvider {
+export interface SessionProviderStat {
   sessionId: string;
   provider: string;
+  messages: number;
+  input: number;
+  output: number;
+  reasoning: number;
+  cost: number;
 }
 
 export interface SelectionStats {
-  modelSessions: ModelSessions[];
-  sessionProviders: SessionProvider[];
+  session_stats: SessionProviderStat[];
 }
 
 /** Single-scan dashboard payload (overview + daily + models). */
@@ -87,6 +89,7 @@ export interface Bucket {
   label: string;
   input: number;
   output: number;
+  reasoning: number;
   cost: number;
   messages: number;
 }

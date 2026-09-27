@@ -83,6 +83,13 @@ export function fmtDayIT(iso: string, lang: Lang = "it"): string {
   return lang === "en" ? `${mm}/${dd}` : `${dd}/${mm}`;
 }
 
+/** YYYY-MM -> MM/YYYY (locale-neutral month bucket label). */
+export function fmtMonth(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return ym;
+  return `${String(m).padStart(2, "0")}/${y}`;
+}
+
 export function timeHM(ms: number, lang: Lang = "it"): string {
   const d = new Date(ms);
   return d.toLocaleTimeString(lang === "en" ? "en-US" : "it-IT", {

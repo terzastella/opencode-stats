@@ -10,7 +10,7 @@ import { SVGRenderer } from "echarts/renderers";
 import { api, isTauriRuntime } from "./lib/api";
 import { demoLang, demoSettings, demoView, isDemo } from "./lib/demo";
 import { STRINGS, type Lang } from "./lib/i18n";
-import { escapeHtml, fmtBytes, fmtCompact, fmtCost, fmtCostCompact, fmtDayIT, fmtInt, timeHM } from "./lib/format";
+import { escapeHtml, fmtBytes, fmtCompact, fmtCost, fmtCostCompact, fmtDayIT, fmtInt, fmtMonth, timeHM } from "./lib/format";
 import {
   DESC_MAX_LENGTH,
   PHOTO_MAX_BYTES,
@@ -20,15 +20,17 @@ import {
   type RangeKey,
   type ViewMode,
 } from "./lib/profile";
-import { providerGroup, type Bucket, type DayStat, type DbInfo, type ModelStat, type Overview, type SelectionStats, type SessionRow } from "./lib/types";
+import { providerGroup, type Bucket, type DayStat, type DbInfo, type ModelStat, type Overview, type SelectionStats, type SessionProviderStat, type SessionRow } from "./lib/types";
 import { providerColor } from "./lib/providers";
 import { ProviderMark } from "./lib/brand";
 import ActivityHeatmap from "./components/ActivityHeatmap";
+import { granularityForSpan, monthKey, type Granularity } from "./lib/activity";
 import "./App.css";
 
 echarts.use([LineChart, BarChart, PieChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
 
-const RANGE_DAYS: Record<RangeKey, number> = { daily: 14, weekly: 56, all: 365 };
+/** days == 0 means all-time (no backend cutoff). */
+const RANGE_DAYS: Record<RangeKey, number> = { daily: 14, weekly: 56, all: 0 };
 const REFRESH_MS = 30_000;
 
 function lastNDays(n: number): string[] {
@@ -58,6 +60,8 @@ function weekStartMonday(iso: string): string | null {
   const mon = new Date(dt.getTime() - dow * 86_400_000);
   return toISO(mon);
 }
+
+
 
 /** Neutral grayscale monogram from the profile name (e.g. "Il mio workspace" -> "IM"). */
 function monogram(name: string): string {
@@ -609,25 +613,63 @@ export default function App() {
     loadHeatmap();
   }, [settingsOpen, loadHeatmap]);
 
-  /** sessionId -> dominant provider (by input), only while filtered. */
-  const sessionProviders = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const sp of selStats?.sessionProviders ?? []) {
-      if (sp.sessionId) map.set(sp.sessionId, sp.provider);
+  /** sessionId -> per-provider usage in the window (only while filtered). */
+  const sessionUse = useMemo(() => {
+    const map = new Map<string, Map<string, SessionProviderStat>>();
+    for (const sp of selStats?.session_stats ?? []) {
+      if (!sp.sessionId) continue;
+      let inner = map.get(sp.sessionId);
+      if (!inner) {
+        inner = new Map();
+        map.set(sp.sessionId, inner);
+      }
+      inner.set(providerGroup(sp.provider), sp);
     }
     return map;
   }, [selStats]);
 
-  /** Distinct sessions per selected (provider, model), from selection stats. */
+  /** Distinct sessions touching any selected provider. */
   const selSessions = useMemo(() => {
     if (!selStats) return 0;
     let n = 0;
-    for (const m of selStats.modelSessions ?? []) {
-      const g = providerGroup(m.provider);
-      if (filters.selected.includes(g)) n += m.sessions;
+    for (const [, inner] of sessionUse) {
+      for (const g of filters.selected) {
+        if (inner.has(g)) {
+          n++;
+          break;
+        }
+      }
     }
     return n;
-  }, [selStats, filters.selected]);
+  }, [selStats, sessionUse, filters.selected]);
+
+  /** Min/max calendar day present in the rows (all-time span). */
+  const daySpan = useMemo(() => {
+    let min = "";
+    let max = "";
+    for (const r of daily) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(r.day)) continue;
+      if (!min || r.day < min) min = r.day;
+      if (!max || r.day > max) max = r.day;
+    }
+    if (!min) return null;
+    const span = Math.max(0, Math.round((Date.parse(max) - Date.parse(min)) / 86_400_000)) + 1;
+    return { min, max, span };
+  }, [daily]);
+
+  /** Granularity for the "all" range (daily/weekly keep their own). */
+  const allGran: Granularity = !daySpan ? "week" : granularityForSpan(daySpan.span);
+
+  const labelFor = (key: string): string =>
+    /^\d{4}-\d{2}$/.test(key) ? fmtMonth(key) : fmtDayIT(key, lang);
+
+  const rangeKey = (day: string): string | null => {
+    if (range === "daily") return day;
+    if (range === "weekly") return weekStartMonday(day);
+    if (allGran === "day") return day;
+    if (allGran === "week") return weekStartMonday(day);
+    return monthKey(day);
+  };
 
   const buckets: Bucket[] = useMemo(() => {
     const days = RANGE_DAYS[range];
@@ -635,24 +677,22 @@ export default function App() {
     const get = (k: string): Bucket => {
       let b = map.get(k);
       if (!b) {
-        b = { key: k, label: fmtDayIT(k, lang), input: 0, output: 0, cost: 0, messages: 0 };
+        b = { key: k, label: labelFor(k), input: 0, output: 0, reasoning: 0, cost: 0, messages: 0 };
         map.set(k, b);
       }
       return b;
     };
-    const bucketKey = (day: string): string | null => {
-      if (range === "weekly" || range === "all") return weekStartMonday(day);
-      return day;
-    };
     const add = (r: DayStat) => {
       if (!groupPass(providerGroup(r.provider))) return;
-      const key = bucketKey(r.day);
+      const key = rangeKey(r.day);
       if (!key) return;
-      // Daily view: ignore rows outside the visible window (stale/odd days).
-      if (range === "daily" && !map.has(key)) return;
+      // Daily views (and all-time at day granularity): ignore rows outside
+      // the visible window (stale/odd days).
+      if ((range === "daily" || (range === "all" && allGran === "day")) && !map.has(key)) return;
       const b = get(key);
       b.input += r.input;
       b.output += r.output;
+      b.reasoning += r.reasoning;
       b.cost += r.cost;
       b.messages += r.messages;
     };
@@ -661,9 +701,40 @@ export default function App() {
       return [...map.keys()].sort().slice(-8).map((k) => map.get(k)!);
     }
     if (range === "all") {
-      // Honest aggregation: one bucket per week over the whole range.
+      if (daySpan) {
+        if (allGran === "day") {
+          // Fill the whole span so zero-activity days render as gaps, not cuts.
+          const cur = new Date(daySpan.min + "T12:00:00");
+          const end = Date.parse(daySpan.max);
+          for (let i = 0; i < 4000 && cur.getTime() <= end; i++) {
+            get(toISO(cur));
+            cur.setDate(cur.getDate() + 1);
+          }
+        } else if (allGran === "week") {
+          let cur = weekStartMonday(daySpan.min);
+          for (let i = 0; i < 900 && cur && cur <= daySpan.max; i++) {
+            get(cur);
+            const d = new Date(cur + "T12:00:00");
+            d.setDate(d.getDate() + 7);
+            cur = toISO(d);
+          }
+        } else {
+          let [y, m] = daySpan.min.slice(0, 7).split("-").map(Number);
+          const endYm = daySpan.max.slice(0, 7);
+          for (let i = 0; i < 400; i++) {
+            const k = `${y}-${String(m).padStart(2, "0")}`;
+            get(k);
+            if (k >= endYm) break;
+            m++;
+            if (m > 12) {
+              m = 1;
+              y++;
+            }
+          }
+        }
+      }
       for (const r of daily) add(r);
-      return [...map.keys()].sort().slice(-60).map((k) => map.get(k)!);
+      return [...map.keys()].sort().map((k) => map.get(k)!);
     }
     for (const k of lastNDays(days)) get(k);
     for (const r of daily) add(r);
@@ -681,8 +752,8 @@ export default function App() {
       const g = providerGroup(r.provider);
       const arr = data.get(g);
       if (!arr) continue;
-      // Same bucketing as `buckets` (weekly keys for weekly/all ranges).
-      const key = range === "daily" ? r.day : weekStartMonday(r.day);
+      // Same bucketing as `buckets` (shared rangeKey).
+      const key = rangeKey(r.day);
       if (!key) continue;
       const i = idx.get(key);
       if (i === undefined) continue;
@@ -716,6 +787,7 @@ export default function App() {
     messages: number;
     input: number;
     output: number;
+    reasoning: number;
     cost: number;
   }
 
@@ -731,6 +803,7 @@ export default function App() {
         messages: m.messages,
         input: m.input,
         output: m.output,
+        reasoning: m.reasoning,
         cost: m.cost,
       });
     }
@@ -740,10 +813,11 @@ export default function App() {
 
   const totals = useMemo(() => {
     const base =
-      overview ?? { sessions: 0, messages: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0 };
+      overview ?? { sessions: 0, messages: 0, input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, cost: 0 };
     if (selEmpty) return base;
     let input = 0,
       output = 0,
+      reasoning = 0,
       cost = 0,
       messages = 0,
       cacheRead = 0,
@@ -752,6 +826,7 @@ export default function App() {
       if (!filters.selected.includes(providerGroup(r.provider))) continue;
       input += r.input;
       output += r.output;
+      reasoning += r.reasoning;
       cost += r.cost;
       messages += r.messages;
     }
@@ -763,7 +838,7 @@ export default function App() {
     // Sessions come from selection stats (distinct per model); falls back to
     // the unfiltered count only while that fetch is still in flight.
     const sessions = selStats ? selSessions : base.sessions;
-    return { ...base, input, output, cost, messages, cacheRead, cacheWrite, sessions };
+    return { ...base, input, output, reasoning, cost, messages, cacheRead, cacheWrite, sessions };
   }, [overview, daily, models, selStats, selSessions, filters.selected, selEmpty]);
 
   const fg = dark ? "#fafafa" : "#18181b";
@@ -848,7 +923,7 @@ export default function App() {
         textStyle: { color: fg, fontSize: 12 },
         valueFormatter: (value: number | string) => fmtCompact(Number(value)),
       },
-      legend: { data: [S["series.input"], S["series.output"]], textStyle: { color: faint, fontSize: 11 } },
+      legend: { data: [S["series.input"], S["series.output"], S["series.reasoning"]], textStyle: { color: faint, fontSize: 11 } },
       grid: { left: 52, right: 14, top: 34, bottom: 26 },
       xAxis: {
         type: "category",
@@ -892,6 +967,15 @@ export default function App() {
             ]),
           },
           data: buckets.map((b) => b.output),
+        },
+        {
+          name: S["series.reasoning"],
+          type: "line",
+          smooth: true,
+          showSymbol: false,
+          lineStyle: { width: 1.5, type: "dotted", color: dark ? "#b79bff" : "#7c3aed" },
+          itemStyle: { color: dark ? "#b79bff" : "#7c3aed" },
+          data: buckets.map((b) => b.reasoning),
         },
       ],
     };
@@ -1215,7 +1299,9 @@ export default function App() {
         <div className="kpi">
           <span className="kpi-label">{S["kpi.output"]}</span>
           <strong className="kpi-value">{totals ? fmtCompact(totals.output) : "—"}</strong>
-          <span className="kpi-sub">{totals ? fmtInt(totals.output, lang) : ""}</span>
+          <span className="kpi-sub">
+            {totals ? `${S["kpi.reasoning"]} ${fmtCompact(totals.reasoning)} · ${S["kpi.totalGenerated"]} ${fmtCompact(totals.output + totals.reasoning)}` : ""}
+          </span>
         </div>
         <div className="kpi">
           <span className="kpi-label">{S["kpi.cost"]}</span>
@@ -1227,17 +1313,19 @@ export default function App() {
           <strong className="kpi-value">
             {totals ? `${fmtCompact(totals.messages)} · ${fmtInt(totals.sessions, lang)}` : "—"}
           </strong>
-          <span className="kpi-sub">{RANGE_LABEL[range]} · {S["kpi.rangeSub"]} {RANGE_DAYS[range]} {S["kpi.rangeDays"]}</span>
+          <span className="kpi-sub">
+            {RANGE_LABEL[range]} · {range === "all" ? S["kpi.rangeAll"] : `${S["kpi.rangeSub"]} ${RANGE_DAYS[range]} ${S["kpi.rangeDays"]}`}
+          </span>
         </div>
       </section>
 
       <section className="grid-2">
         <div className="card">
-          <h2>{range === "weekly" ? S["card.tokensWeek"] : S["card.tokensDay"]}</h2>
+          <h2>{range === "weekly" ? S["card.tokensWeek"] : range === "all" ? S["card.tokensAll"] : S["card.tokensDay"]}</h2>
           <div ref={tokensRef} className="chart" />
         </div>
         <div className="card">
-          <h2>{range === "weekly" ? S["card.costWeek"] : S["card.costDay"]}</h2>
+          <h2>{range === "weekly" ? S["card.costWeek"] : range === "all" ? S["card.costAll"] : S["card.costDay"]}</h2>
           <div ref={costRef} className="chart" />
         </div>
       </section>
@@ -1271,6 +1359,7 @@ export default function App() {
                   <th className="num">{S["th.msgs"]}</th>
                   <th className="num">{S["th.input"]}</th>
                   <th className="num">{S["th.output"]}</th>
+                  <th className="num">{S["th.reasoning"]}</th>
                   <th className="num">{S["th.cost"]}</th>
                 </tr>
               </thead>
@@ -1282,11 +1371,12 @@ export default function App() {
                     <td className="num">{fmtInt(m.messages, lang)}</td>
                     <td className="num">{fmtCompact(m.input)}</td>
                     <td className="num">{fmtCompact(m.output)}</td>
+                    <td className="num">{fmtCompact(m.reasoning)}</td>
                     <td className="num">{fmtCost(m.cost, lang)}</td>
                   </tr>
                 ))}
                 {!tableRows.length && (
-                  <tr><td colSpan={6} className="empty">{S["empty.models"]}</td></tr>
+                  <tr><td colSpan={7} className="empty">{S["empty.models"]}</td></tr>
                 )}
               </tbody>
             </table>
@@ -1298,39 +1388,62 @@ export default function App() {
         <h2>{S["card.sessions"]}</h2>
         <div className="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>{S["th.title"]}</th>
-                <th>{S["th.folder"]}</th>
-                <th>{S["th.day"]}</th>
-                <th className="num">{S["th.input"]}</th>
-                <th className="num">{S["th.output"]}</th>
-                <th className="num">{S["th.cost"]}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions
-                .filter((s) => {
-                  // Unfiltered: show everything. Filtered: only sessions whose
-                  // dominant provider is selected (sessions without message
-                  // attribution can't be attributed, so they're hidden).
+              <thead>
+                <tr>
+                  <th>{S["th.title"]}</th>
+                  <th>{S["th.folder"]}</th>
+                  <th>{S["th.day"]}</th>
+                  <th className="num">{S["th.input"]}</th>
+                  <th className="num">{S["th.output"]}</th>
+                  <th className="num">{S["th.reasoning"]}</th>
+                  <th className="num">{S["th.cost"]}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions
+                .map((s) => ({ s, use: selEmpty ? null : sessionUse.get(s.id) ?? null }))
+                .filter(({ use }) => {
+                  // Unfiltered: show everything with per-period session totals.
+                  // Filtered: keep sessions where ANY selected provider was used
+                  // and show only the selected providers' numbers.
                   if (selEmpty) return true;
-                  const p = sessionProviders.get(s.id);
-                  return p !== undefined && filters.selected.includes(providerGroup(p));
+                  if (!use) return false;
+                  return filters.selected.some((g) => use.has(g));
                 })
                 .slice(0, 15)
-                .map((s, i) => (
+                .map(({ s, use }, i) => {
+                let input = s.input;
+                let output = s.output;
+                let reasoning = s.reasoning;
+                let cost = s.cost;
+                if (use) {
+                  input = 0;
+                  output = 0;
+                  reasoning = 0;
+                  cost = 0;
+                  for (const g of filters.selected) {
+                    const st = use.get(g);
+                    if (!st) continue;
+                    input += st.input;
+                    output += st.output;
+                    reasoning += st.reasoning;
+                    cost += st.cost;
+                  }
+                }
+                return (
                 <tr key={s.id || `${s.day}-${s.title}-${i}`}>
                   <td>{s.title || (s.id ?? "").slice(0, 12)}</td>
                   <td className="mono dim">{(s.directory ?? "").split(/[\\/]/).pop() || s.directory}</td>
                   <td className="mono">{fmtDayIT(s.day ?? "", lang)}</td>
-                  <td className="num">{fmtCompact(s.input)}</td>
-                  <td className="num">{fmtCompact(s.output)}</td>
-                  <td className="num">{fmtCost(s.cost, lang)}</td>
+                  <td className="num">{fmtCompact(input)}</td>
+                  <td className="num">{fmtCompact(output)}</td>
+                  <td className="num">{fmtCompact(reasoning)}</td>
+                  <td className="num">{fmtCost(cost, lang)}</td>
                 </tr>
-              ))}
+                );
+              })}
               {!sessions.length && (
-                <tr><td colSpan={6} className="empty">{S["empty.sessions"]}</td></tr>
+                <tr><td colSpan={7} className="empty">{S["empty.sessions"]}</td></tr>
               )}
             </tbody>
           </table>

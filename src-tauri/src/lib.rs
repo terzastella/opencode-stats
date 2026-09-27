@@ -13,19 +13,20 @@ fn db_info() -> Result<DbInfo, String> {
 
 #[tauri::command]
 fn session_list(days: Option<u32>, limit: Option<u32>) -> Result<Vec<SessionRow>, String> {
-    session_list_inner(days.unwrap_or(30).clamp(1, 365), limit.unwrap_or(100))
+    session_list_inner(days.unwrap_or(30).clamp(0, 365), limit.unwrap_or(100))
 }
 
 /// Single-scan dashboard payload (overview + daily + models in one go).
+/// days == 0 means all-time (no cutoff).
 #[tauri::command]
 fn dashboard(days: Option<u32>) -> Result<DashboardData, String> {
-    dashboard_inner(days.unwrap_or(30).clamp(1, 365))
+    dashboard_inner(days.unwrap_or(30).clamp(0, 365))
 }
 
 /// Selection honesty data, called only when a provider filter is active.
 #[tauri::command]
 fn selection_stats(days: Option<u32>) -> Result<SelectionStats, String> {
-    selection_stats_inner(days.unwrap_or(30).clamp(1, 365))
+    selection_stats_inner(days.unwrap_or(30).clamp(0, 365))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

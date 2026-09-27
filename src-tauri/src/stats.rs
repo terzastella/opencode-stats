@@ -71,7 +71,11 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+/// days == 0 means all-time: epoch cutoff matches every row.
 fn cutoff_ms(days: u32) -> i64 {
+    if days == 0 {
+        return 0;
+    }
     let days = days.clamp(1, 365) as i64;
     now_ms().saturating_sub(days.saturating_mul(DAY_MS))
 }
@@ -87,8 +91,9 @@ fn fin(f: f64) -> f64 {
 }
 
 /// Tolerant integer decode for SUM() aggregates: token counts arrive as
-/// integers, but a float/string in the JSON would make `r.get::<i64>` fail
-/// and sink the whole dashboard. COUNT(*) columns stay strict (always ints).
+/// integers, but a float or numeric string in the JSON would make
+/// `r.get::<i64>` fail and sink the whole dashboard. COUNT(*) columns stay
+/// strict (always ints).
 fn num_i64(r: &rusqlite::Row, idx: usize) -> rusqlite::Result<i64> {
     if let Ok(Some(v)) = r.get::<_, Option<i64>>(idx) {
         return Ok(v);
@@ -96,6 +101,17 @@ fn num_i64(r: &rusqlite::Row, idx: usize) -> rusqlite::Result<i64> {
     if let Ok(Some(v)) = r.get::<_, Option<f64>>(idx) {
         if v.is_finite() {
             return Ok(v.round().clamp(i64::MIN as f64, i64::MAX as f64) as i64);
+        }
+    }
+    if let Ok(Some(s)) = r.get::<_, Option<String>>(idx) {
+        let t = s.trim();
+        if let Ok(v) = t.parse::<i64>() {
+            return Ok(v);
+        }
+        if let Ok(v) = t.parse::<f64>() {
+            if v.is_finite() {
+                return Ok(v.round().clamp(i64::MIN as f64, i64::MAX as f64) as i64);
+            }
         }
     }
     Ok(0)
@@ -120,6 +136,7 @@ pub struct DayStat {
     pub messages: i64,
     pub input: i64,
     pub output: i64,
+    pub reasoning: i64,
     pub cache_read: i64,
     pub cache_write: i64,
     pub cost: f64,
@@ -133,6 +150,7 @@ pub struct ModelStat {
     pub messages: i64,
     pub input: i64,
     pub output: i64,
+    pub reasoning: i64,
     pub cache_read: i64,
     pub cache_write: i64,
     pub cost: f64,
@@ -147,6 +165,7 @@ pub struct SessionRow {
     pub cost: f64,
     pub input: i64,
     pub output: i64,
+    pub reasoning: i64,
     pub cache_read: i64,
     pub day: String,
     pub updated_ms: i64,
@@ -159,6 +178,7 @@ pub struct Overview {
     pub messages: i64,
     pub input: i64,
     pub output: i64,
+    pub reasoning: i64,
     pub cache_read: i64,
     pub cache_write: i64,
     pub cost: f64,
@@ -206,16 +226,24 @@ pub fn session_list_inner(days: u32, limit: u32) -> Result<Vec<SessionRow>, Stri
     let conn = open_ro(&path)?;
     let cutoff = cutoff_ms(days);
     let limit = limit.clamp(1, 500) as i64;
+    // Per-period attribution: the session row shows only assistant-message
+    // usage inside the window (time_created >= cutoff), not the lifetime
+    // session aggregates — so the list stays coherent with KPIs and charts.
     let mut stmt = conn
         .prepare(
-            "SELECT id, COALESCE(title,''), COALESCE(directory,''),
-                COALESCE(cost,0.0), COALESCE(tokens_input,0), COALESCE(tokens_output,0),
-                COALESCE(tokens_cache_read,0),
-                date(datetime(time_updated/1000,'unixepoch','localtime')) AS day,
-                time_updated
-             FROM session
-             WHERE time_updated >= ?1
-             ORDER BY time_updated DESC
+            "SELECT s.id, COALESCE(s.title,''), COALESCE(s.directory,''),
+                COALESCE(SUM(COALESCE(json_extract(m.data,'$.cost'),0.0)),0.0) AS cost,
+                COALESCE(SUM(COALESCE(json_extract(m.data,'$.tokens.input'),0)),0) AS input,
+                COALESCE(SUM(COALESCE(json_extract(m.data,'$.tokens.output'),0)),0) AS output,
+                COALESCE(SUM(COALESCE(json_extract(m.data,'$.tokens.reasoning'),0)),0) AS reasoning,
+                COALESCE(SUM(COALESCE(json_extract(m.data,'$.tokens.cache.read'),0)),0) AS cache_read,
+                date(datetime(s.time_updated/1000,'unixepoch','localtime')) AS day,
+                s.time_updated
+             FROM session s LEFT JOIN message m ON m.session_id = s.id
+                AND m.time_created >= ?1 AND json_extract(m.data,'$.role') = 'assistant'
+             WHERE s.time_updated >= ?1
+             GROUP BY s.id
+             ORDER BY s.time_updated DESC
              LIMIT ?2",
         )
         .map_err(|e| format!("sessions prepare failed: {e}"))?;
@@ -228,9 +256,10 @@ pub fn session_list_inner(days: u32, limit: u32) -> Result<Vec<SessionRow>, Stri
                 cost: r.get(3)?,
                 input: num_i64(r, 4)?,
                 output: num_i64(r, 5)?,
-                cache_read: num_i64(r, 6)?,
-                day: r.get(7)?,
-                updated_ms: r.get(8)?,
+                reasoning: num_i64(r, 6)?,
+                cache_read: num_i64(r, 7)?,
+                day: r.get(8)?,
+                updated_ms: r.get(9)?,
             })
         })
         .map_err(|e| format!("sessions query failed: {e}"))?;
@@ -264,6 +293,7 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
             COUNT(*) AS messages,
             COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.input'),0)),0) AS input,
             COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.output'),0)),0) AS output,
+            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.reasoning'),0)),0) AS reasoning,
             COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.read'),0)),0) AS cache_read,
             COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.cache.write'),0)),0) AS cache_write,
             COALESCE(SUM(COALESCE(json_extract(data,'$.cost'),0.0)),0.0) AS cost
@@ -286,9 +316,10 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
                 messages: r.get(3)?,
                 input: num_i64(r, 4)?,
                 output: num_i64(r, 5)?,
-                cache_read: num_i64(r, 6)?,
-                cache_write: num_i64(r, 7)?,
-                cost: r.get(8)?,
+                reasoning: num_i64(r, 6)?,
+                cache_read: num_i64(r, 7)?,
+                cache_write: num_i64(r, 8)?,
+                cost: r.get(9)?,
             })
         })
         .map_err(|e| format!("dashboard query failed: {e}"))?;
@@ -300,6 +331,7 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
         messages: 0,
         input: 0,
         output: 0,
+        reasoning: 0,
         cache_read: 0,
         cache_write: 0,
         cost: 0.0,
@@ -310,6 +342,7 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
         overview.messages = overview.messages.saturating_add(d.messages);
         overview.input = overview.input.saturating_add(d.input);
         overview.output = overview.output.saturating_add(d.output);
+        overview.reasoning = overview.reasoning.saturating_add(d.reasoning);
         overview.cache_read = overview.cache_read.saturating_add(d.cache_read);
         overview.cache_write = overview.cache_write.saturating_add(d.cache_write);
         overview.cost += d.cost;
@@ -319,6 +352,7 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
                 m.messages = m.messages.saturating_add(d.messages);
                 m.input = m.input.saturating_add(d.input);
                 m.output = m.output.saturating_add(d.output);
+                m.reasoning = m.reasoning.saturating_add(d.reasoning);
                 m.cache_read = m.cache_read.saturating_add(d.cache_read);
                 m.cache_write = m.cache_write.saturating_add(d.cache_write);
                 m.cost += d.cost;
@@ -329,6 +363,7 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
                 messages: d.messages,
                 input: d.input,
                 output: d.output,
+                reasoning: d.reasoning,
                 cache_read: d.cache_read,
                 cache_write: d.cache_write,
                 cost: d.cost,
@@ -361,98 +396,106 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
     })
 }
 
+/// Per-(session, provider) usage inside the window, fetched ONLY when a
+/// provider filter is active. The frontend keeps a session when ANY selected
+/// provider was used and shows only the selected providers' numbers — no
+/// dominant-provider hiding.
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ModelSessions {
-    pub provider: String,
-    pub model: String,
-    pub sessions: i64,
-}
-
-#[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct SessionProvider {
+pub struct SessionProviderStat {
     pub session_id: String,
     pub provider: String,
+    pub messages: i64,
+    pub input: i64,
+    pub output: i64,
+    pub reasoning: i64,
+    pub cost: f64,
 }
 
-/// Selection honesty data, fetched ONLY when a provider filter is active:
-/// distinct sessions per (provider, model), plus the dominant provider
-/// (by input tokens) of every session in range.
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectionStats {
-    pub model_sessions: Vec<ModelSessions>,
-    pub session_providers: Vec<SessionProvider>,
+    pub session_stats: Vec<SessionProviderStat>,
 }
 
 pub fn selection_stats_inner(days: u32) -> Result<SelectionStats, String> {
     let path = opencode_db_path();
     let conn = open_ro(&path)?;
     let cutoff = cutoff_ms(days);
-    let sql_models = format!(
-        "SELECT {provider} AS provider, {model} AS model,
-            COUNT(DISTINCT session_id) AS sessions
-         FROM message
-         WHERE time_created >= ?1 AND json_extract(data,'$.role') = 'assistant'
-         GROUP BY provider, model",
-        provider = PROVIDER_SQL,
-        model = MODEL_SQL
-    );
-    let mut stmt = conn
-        .prepare(&sql_models)
-        .map_err(|e| format!("selection models prepare failed: {e}"))?;
-    let model_sessions: Vec<ModelSessions> = stmt
-        .query_map([cutoff], |r| {
-            Ok(ModelSessions {
-                provider: r.get(0)?,
-                model: r.get(1)?,
-                sessions: r.get(2)?,
-            })
-        })
-        .map_err(|e| format!("selection models query failed: {e}"))?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| format!("row decode failed: {e}"))?;
-
-    let sql_sessions = format!(
+    let sql = format!(
         "SELECT session_id, {provider} AS provider,
-            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.input'),0)),0) AS input
+            COUNT(*) AS messages,
+            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.input'),0)),0) AS input,
+            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.output'),0)),0) AS output,
+            COALESCE(SUM(COALESCE(json_extract(data,'$.tokens.reasoning'),0)),0) AS reasoning,
+            COALESCE(SUM(COALESCE(json_extract(data,'$.cost'),0.0)),0.0) AS cost
          FROM message
          WHERE time_created >= ?1 AND json_extract(data,'$.role') = 'assistant'
          GROUP BY session_id, provider",
         provider = PROVIDER_SQL
     );
-    let mut stmt2 = conn
-        .prepare(&sql_sessions)
-        .map_err(|e| format!("selection sessions prepare failed: {e}"))?;
-    let mut best: HashMap<String, (String, i64)> = HashMap::new();
-    let rows = stmt2
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| format!("selection prepare failed: {e}"))?;
+    let mut session_stats: Vec<SessionProviderStat> = stmt
         .query_map([cutoff], |r| {
-            let session_id: String = r.get(0)?;
-            let provider: String = r.get(1)?;
-            let input: i64 = num_i64(r, 2)?;
-            Ok((session_id, provider, input))
-        })
-        .map_err(|e| format!("selection sessions query failed: {e}"))?;
-    for row in rows {
-        let (session_id, provider, input) = row.map_err(|e| format!("row decode failed: {e}"))?;
-        best.entry(session_id)
-            .and_modify(|e| {
-                if input > e.1 {
-                    *e = (provider.clone(), input);
-                }
+            Ok(SessionProviderStat {
+                session_id: r.get(0)?,
+                provider: r.get(1)?,
+                messages: r.get(2)?,
+                input: num_i64(r, 3)?,
+                output: num_i64(r, 4)?,
+                reasoning: num_i64(r, 5)?,
+                cost: r.get(6)?,
             })
-            .or_insert((provider, input));
-    }
-    let session_providers = best
-        .into_iter()
-        .map(|(session_id, (provider, _))| SessionProvider {
-            session_id,
-            provider,
         })
-        .collect();
+        .map_err(|e| format!("selection query failed: {e}"))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("row decode failed: {e}"))?;
+    // Non-finite floats are not valid JSON.
+    for s in &mut session_stats {
+        s.cost = fin(s.cost);
+    }
     Ok(SelectionStats {
-        model_sessions,
-        session_providers,
+        session_stats,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    #[test]
+    fn fin_sanitizes_non_finite() {
+        assert_eq!(fin(1.5), 1.5);
+        assert_eq!(fin(f64::NAN), 0.0);
+        assert_eq!(fin(f64::INFINITY), 0.0);
+        assert_eq!(fin(f64::NEG_INFINITY), 0.0);
+    }
+
+    fn decode_literal(literal: &str) -> i64 {
+        let conn = Connection::open_in_memory().unwrap();
+        let mut stmt = conn
+            .prepare(&format!("SELECT {literal} AS v"))
+            .unwrap();
+        let mut rows = stmt.query([]).unwrap();
+        let row = rows.next().unwrap().unwrap();
+        num_i64(&row, 0).unwrap()
+    }
+
+    #[test]
+    fn num_i64_accepts_int_float_and_numeric_string() {
+        assert_eq!(decode_literal("42"), 42);
+        assert_eq!(decode_literal("4.6"), 5); // rounds
+        assert_eq!(decode_literal("'123'"), 123);
+        assert_eq!(decode_literal("' 7.4 '"), 7); // trims
+    }
+
+    #[test]
+    fn num_i64_falls_back_to_zero() {
+        assert_eq!(decode_literal("NULL"), 0);
+        assert_eq!(decode_literal("'abc'"), 0);
+        assert_eq!(decode_literal("'NaN'"), 0);
+    }
 }

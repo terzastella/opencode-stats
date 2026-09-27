@@ -42,11 +42,14 @@ export function demoDashboard(skewed = false, days = DEMO_DAYS): Dashboard {
   const models = providers.map(([provider, model, base], pi) => {
     let input = 0;
     let output = 0;
+    let reasoning = 0;
     for (let d = totalDays - 1; d >= 0; d--) {
       const inp = Math.round(base * (0.5 + ((d * 7 + pi * 13) % 10) / 14));
       const out = Math.round(inp * 0.08);
+      const rea = pi === 0 ? Math.round(out * 0.6) : 0;
       input += inp;
       output += out;
+      reasoning += rea;
       daily.push({
         day: daysBack(d),
         provider,
@@ -54,6 +57,7 @@ export function demoDashboard(skewed = false, days = DEMO_DAYS): Dashboard {
         messages: 10 + ((d + pi) % 20),
         input: inp,
         output: out,
+        reasoning: rea,
         cacheRead: inp * 3,
         cacheWrite: 0,
         cost: pi === 2 ? 0.12 : 0,
@@ -65,6 +69,7 @@ export function demoDashboard(skewed = false, days = DEMO_DAYS): Dashboard {
       messages: 120 + pi * 40,
       input,
       output,
+      reasoning,
       cacheRead: input * 3,
       cacheWrite: 0,
       cost: pi === 2 ? 1.68 : 0,
@@ -72,12 +77,14 @@ export function demoDashboard(skewed = false, days = DEMO_DAYS): Dashboard {
   });
   const input = models.reduce((a, m) => a + m.input, 0);
   const output = models.reduce((a, m) => a + m.output, 0);
+  const reasoning = models.reduce((a, m) => a + m.reasoning, 0);
   return {
     overview: {
       sessions: 12,
       messages: 340,
       input,
       output,
+      reasoning,
       cacheRead: input * 3,
       cacheWrite: 0,
       cost: 1.68,
@@ -95,6 +102,7 @@ export function demoSessions(): SessionRow[] {
     cost: i === 0 ? 1.68 : 0,
     input: 1_000_000 - i * 100_000,
     output: 80_000 - i * 8_000,
+    reasoning: i === 0 ? 48_000 : 0,
     cacheRead: 3_000_000,
     day: daysBack(i % 5),
     updatedMs: Date.now() - i * 3_600_000,

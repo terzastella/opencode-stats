@@ -26,7 +26,7 @@ export const api = {
    */
   selectionStats: (days: number) =>
     demo
-      ? Promise.resolve({ modelSessions: [], sessionProviders: [] } as SelectionStats)
+      ? Promise.resolve({ session_stats: [] } as SelectionStats)
       : call<SelectionStats>("selection_stats", { days }),
 };
 
