@@ -15,10 +15,13 @@ name = "opencode_stats_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
+# NOTE: tauri-build tracks its own 2.x line (latest 2.7.0); the GHSA-7gmj-67g7-phm9
+# floor below applies to the `tauri` crate only, which is on the 2.11.x line.
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# Caret floor guards GHSA-7gmj-67g7-phm9 (tauri <=2.11.0, fixed in 2.11.1).
+tauri = { version = "2.11.1", features = [] }
 serde = { version = "1", features = ["derive"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 dirs = "5"

@@ -36,7 +36,9 @@ const DEFAULTS: Profile = {
 
 function cleanPhoto(v: unknown): string {
   if (typeof v !== "string") return "";
-  if (!v.startsWith("data:image/")) return "";
+  // Raster allowlist matching the upload path (canvas re-encodes to JPEG,
+  // so legit photos are always image/jpeg;SVG/BMP/AVIF legacy values reset).
+  if (!/^data:image\/(jpeg|png|webp|gif);base64,/.test(v)) return "";
   if (v.length > PHOTO_MAX) return "";
   return v;
 }

@@ -6,21 +6,31 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: no job needs to write.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
       # tsc && vite build — typecheck is part of the build, no extra step needed.
       - run: npm run build
 
   tauri:
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,7 +38,7 @@ jobs:
           node-version: "20"
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
       - run: npm run tauri build
 
 # NOTE: CI is a gate only — no artifacts are uploaded. Public releases are

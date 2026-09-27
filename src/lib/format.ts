@@ -4,6 +4,18 @@ function num(n: unknown): number {
   return typeof n === "number" && isFinite(n) ? n : 0;
 }
 
+/**
+ * Escape HTML metacharacters. ECharts tooltip/label `formatter` strings are
+ * rendered as HTML, and provider names come from the (untrusted) OpenCode DB,
+ * so every interpolated name must go through here (stored-XSS guard).
+ */
+export function escapeHtml(s: unknown): string {
+  const str = typeof s === "string" ? s : String(s ?? "");
+  return str.replace(/[&<>"']/g, (c) =>
+    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
+  );
+}
+
 export function fmtInt(n: unknown, lang: Lang = "it"): string {
   return Math.round(num(n)).toLocaleString(lang === "en" ? "en-US" : "it-IT");
 }

@@ -29,9 +29,30 @@ pub fn opencode_db_path() -> PathBuf {
     PathBuf::from("opencode.db")
 }
 
+/// Refuse absurd files before SQLite touches them (friendly errors, no panic).
+const MAX_DB_BYTES: u64 = 2_147_483_648; // 2 GiB, far above any real opencode.db
+
 fn open_ro(path: &std::path::Path) -> Result<Connection, String> {
+    // No symlinks: an env override pointing elsewhere must be explicit, and
+    // canonicalize-then-open would hide the indirection from error messages.
+    if std::fs::symlink_metadata(path)
+        .map(|m| m.file_type().is_symlink())
+        .unwrap_or(false)
+    {
+        return Err("database path must not be a symlink".to_string());
+    }
+    let canon = std::fs::canonicalize(path).map_err(|e| format!("open db failed: {e}"))?;
+    if !canon.is_file() {
+        return Err("database is not a regular file".to_string());
+    }
+    // No extension allowlist on purpose: $OPENCODE_DB_PATH may legitimately
+    // point at a renamed copy. Size cap is the DoS guard.
+    let size = std::fs::metadata(&canon).map(|m| m.len()).unwrap_or(0);
+    if size > MAX_DB_BYTES {
+        return Err(format!("database too large ({size} bytes, cap is {MAX_DB_BYTES})"));
+    }
     let conn = Connection::open_with_flags(
-        path,
+        &canon,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )
     .map_err(|e| format!("open db failed: {e}"))?;
@@ -63,6 +84,21 @@ fn fin(f: f64) -> f64 {
     } else {
         0.0
     }
+}
+
+/// Tolerant integer decode for SUM() aggregates: token counts arrive as
+/// integers, but a float/string in the JSON would make `r.get::<i64>` fail
+/// and sink the whole dashboard. COUNT(*) columns stay strict (always ints).
+fn num_i64(r: &rusqlite::Row, idx: usize) -> rusqlite::Result<i64> {
+    if let Ok(Some(v)) = r.get::<_, Option<i64>>(idx) {
+        return Ok(v);
+    }
+    if let Ok(Some(v)) = r.get::<_, Option<f64>>(idx) {
+        if v.is_finite() {
+            return Ok(v.round().clamp(i64::MIN as f64, i64::MAX as f64) as i64);
+        }
+    }
+    Ok(0)
 }
 
 #[derive(Serialize)]
@@ -190,9 +226,9 @@ pub fn session_list_inner(days: u32, limit: u32) -> Result<Vec<SessionRow>, Stri
                 title: r.get(1)?,
                 directory: r.get(2)?,
                 cost: r.get(3)?,
-                input: r.get(4)?,
-                output: r.get(5)?,
-                cache_read: r.get(6)?,
+                input: num_i64(r, 4)?,
+                output: num_i64(r, 5)?,
+                cache_read: num_i64(r, 6)?,
                 day: r.get(7)?,
                 updated_ms: r.get(8)?,
             })
@@ -248,10 +284,10 @@ pub fn dashboard_inner(days: u32) -> Result<DashboardData, String> {
                 provider: r.get(1)?,
                 model: r.get(2)?,
                 messages: r.get(3)?,
-                input: r.get(4)?,
-                output: r.get(5)?,
-                cache_read: r.get(6)?,
-                cache_write: r.get(7)?,
+                input: num_i64(r, 4)?,
+                output: num_i64(r, 5)?,
+                cache_read: num_i64(r, 6)?,
+                cache_write: num_i64(r, 7)?,
                 cost: r.get(8)?,
             })
         })
@@ -394,7 +430,7 @@ pub fn selection_stats_inner(days: u32) -> Result<SelectionStats, String> {
         .query_map([cutoff], |r| {
             let session_id: String = r.get(0)?;
             let provider: String = r.get(1)?;
-            let input: i64 = r.get(2)?;
+            let input: i64 = num_i64(r, 2)?;
             Ok((session_id, provider, input))
         })
         .map_err(|e| format!("selection sessions query failed: {e}"))?;

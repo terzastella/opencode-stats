@@ -18,6 +18,16 @@ dist-ssr
 *.sqlite*
 *.tsbuildinfo
 
+# Local build artifacts (releases ship via GitHub Releases, never via git)
+target/
+*.exe
+*.msi
+*.msix
+*.zip
+*.sha256
+*.sig
+*.asc
+
 # OS
 Thumbs.db
 

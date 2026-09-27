@@ -6,6 +6,9 @@
 *.icns binary
 *.jpg binary
 *.jpeg binary
+*.exe binary
+*.msi binary
+*.zip binary
 
 # Generated lockfiles: keep in repo, hide from language stats
 package-lock.json linguist-generated

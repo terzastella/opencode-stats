@@ -10,7 +10,7 @@ import { SVGRenderer } from "echarts/renderers";
 import { api, isTauriRuntime } from "./lib/api";
 import { demoLang, demoSettings, demoView, isDemo } from "./lib/demo";
 import { STRINGS, type Lang } from "./lib/i18n";
-import { fmtBytes, fmtCompact, fmtCost, fmtCostCompact, fmtDayIT, fmtInt, timeHM } from "./lib/format";
+import { escapeHtml, fmtBytes, fmtCompact, fmtCost, fmtCostCompact, fmtDayIT, fmtInt, timeHM } from "./lib/format";
 import {
   DESC_MAX_LENGTH,
   PHOTO_MAX_BYTES,
@@ -279,8 +279,10 @@ export default function App() {
     }
     const mime = (f.type || "").toLowerCase();
     const name = f.name || "";
-    const byType = mime.startsWith("image/");
-    const byExt = /\.(jpe?g|png|webp|gif|avif|bmp|svg)$/i.test(name);
+    // Decodable raster allowlist (canvas + <img> safe, re-encoded to JPEG).
+    const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const byType = ALLOWED_MIME.includes(mime);
+    const byExt = /\.(jpe?g|png|webp|gif)$/i.test(name);
     // Explicitly unsupported in <img>/canvas decoders: report type, not size.
     if (mime === "image/heic" || mime === "image/heif" || mime === "image/tiff" || /\.hei[cf]$|\.tif?f$/i.test(name)) {
       setPhotoError(S["settings.photoType"]);
@@ -300,7 +302,9 @@ export default function App() {
     };
     reader.onload = () => {
       const dataUrl = typeof reader.result === "string" ? reader.result : "";
-      if (!dataUrl.startsWith("data:image/") && !dataUrl.startsWith("data:application/octet-stream")) {
+      // octet-stream only happens when f.type was empty, a case already
+      // gated on an allowlisted extension above.
+      if (!/^data:(image\/(jpeg|png|webp|gif)|application\/octet-stream);base64,/.test(dataUrl)) {
         setPhotoError(S["settings.photoDecode"]);
         return;
       }
@@ -789,7 +793,29 @@ export default function App() {
     if (viewMode === "split" && splitGroups.length) {
       return {
         animation: false,
-        tooltip: baseTooltip,
+        tooltip: {
+          ...baseTooltip,
+          // Series names are provider groups from the untrusted DB: escape
+          // them (axis tooltips render HTML). Mirrors the default layout.
+          formatter: (params: unknown) => {
+            const list: unknown[] = Array.isArray(params) ? params : [params];
+            const first = (typeof list[0] === "object" && list[0] !== null ? list[0] : {}) as {
+              axisValue?: unknown;
+            };
+            const head = escapeHtml(first.axisValue ?? "");
+            const lines = list.map((p) => {
+              const o = (typeof p === "object" && p !== null ? p : {}) as {
+                marker?: unknown;
+                seriesName?: unknown;
+                value?: unknown;
+              };
+              // marker is ECharts-generated HTML from our own palette (trusted).
+              const marker = typeof o.marker === "string" ? o.marker : "";
+              return `${marker} ${escapeHtml(o.seriesName ?? "")} ${fmtCompact(Number(o.value))}`;
+            });
+            return [head, ...lines].join("<br/>");
+          },
+        },
         legend: {
           data: splitGroups.map((s) => s.group),
           textStyle: { color: faint, fontSize: 11 },
@@ -967,7 +993,7 @@ export default function App() {
       tooltip: {
         trigger: "item",
         formatter: (p: { name: string; value: number | string; percent?: number }) =>
-          `${p.name}: ${fmtCompact(Number(p.value))} (${Number(p.percent ?? 0).toFixed(1)}%)`,
+          `${escapeHtml(p.name)}: ${fmtCompact(Number(p.value))} (${Number(p.percent ?? 0).toFixed(1)}%)`,
         backgroundColor: tipBg,
         borderColor: tipBorder,
         textStyle: { color: fg, fontSize: 12 },
@@ -983,7 +1009,7 @@ export default function App() {
             color: faint,
             fontSize: 11,
             formatter: (p: { name: string; value: number | string }) =>
-              `${p.name}\n${fmtCompact(Number(p.value))}`,
+              `${escapeHtml(p.name)}\n${fmtCompact(Number(p.value))}`,
           },
           labelLine: { lineStyle: { color: faint } },
           itemStyle: {
