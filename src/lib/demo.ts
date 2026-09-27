@@ -25,7 +25,7 @@ export function demoDb(): DbInfo {
   return { path: "demo/opencode.db", exists: true, sizeBytes: 123456, sessions: 12, messages: 340 };
 }
 
-export function demoDashboard(skewed = false): Dashboard {
+export function demoDashboard(skewed = false, days = DEMO_DAYS): Dashboard {
   const providers: Array<[string, string, number]> = skewed
     ? [
         ["opencode", "demo-model-a", 2_200_000],
@@ -37,11 +37,12 @@ export function demoDashboard(skewed = false): Dashboard {
         ["ollama", "demo-model-b", 800_000],
         ["nvidia", "demo-model-c", 400_000],
       ];
+  const totalDays = Math.max(1, Math.min(365, Math.round(days) || DEMO_DAYS));
   const daily: DayStat[] = [];
   const models = providers.map(([provider, model, base], pi) => {
     let input = 0;
     let output = 0;
-    for (let d = DEMO_DAYS - 1; d >= 0; d--) {
+    for (let d = totalDays - 1; d >= 0; d--) {
       const inp = Math.round(base * (0.5 + ((d * 7 + pi * 13) % 10) / 14));
       const out = Math.round(inp * 0.08);
       input += inp;

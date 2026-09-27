@@ -23,6 +23,7 @@ import {
 import { providerGroup, type Bucket, type DayStat, type DbInfo, type ModelStat, type Overview, type SelectionStats, type SessionRow } from "./lib/types";
 import { providerColor } from "./lib/providers";
 import { ProviderMark } from "./lib/brand";
+import ActivityHeatmap from "./components/ActivityHeatmap";
 import "./App.css";
 
 echarts.use([LineChart, BarChart, PieChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
@@ -214,6 +215,12 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [booted, setBooted] = useState(false);
   const [inTauri] = useState(isTauriRuntime);
+  // Half-year activity for the profile heatmap (token totals, lazy 365d fetch).
+  const [heatRows, setHeatRows] = useState<DayStat[] | null>(null);
+  const [heatLoading, setHeatLoading] = useState(false);
+  const [heatError, setHeatError] = useState(false);
+  const heatCacheRef = useRef<{ at: number; rows: DayStat[] } | null>(null);
+  const heatFetchingRef = useRef(false);
 
   const range = profile.range;
   const viewMode = profile.viewMode;
@@ -559,6 +566,44 @@ export default function App() {
         selStatsRef.current = false;
       });
   }, [selEmpty, filters.selected, profile.range]);
+
+  // Profile heatmap data: reuse the dashboard rows when the range is
+  // already a full year, otherwise lazy-fetch 365d once per modal open.
+  const loadHeatmap = useCallback(() => {
+    if (heatFetchingRef.current) return;
+    // Reuse in-memory rows when they already cover a year.
+    if (profile.range === "all" && daily.length > 0) {
+      heatCacheRef.current = { at: Date.now(), rows: daily };
+      setHeatRows(daily);
+      setHeatError(false);
+      return;
+    }
+    const cached = heatCacheRef.current;
+    if (cached && Date.now() - cached.at < 30_000) {
+      setHeatRows(cached.rows);
+      setHeatError(false);
+      return;
+    }
+    heatFetchingRef.current = true;
+    setHeatLoading(true);
+    setHeatError(false);
+    api
+      .dashboard(365)
+      .then((d) => {
+        heatCacheRef.current = { at: Date.now(), rows: d.daily };
+        setHeatRows(d.daily);
+      })
+      .catch(() => setHeatError(true))
+      .finally(() => {
+        heatFetchingRef.current = false;
+        setHeatLoading(false);
+      });
+  }, [profile.range, daily]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    loadHeatmap();
+  }, [settingsOpen, loadHeatmap]);
 
   /** sessionId -> dominant provider (by input), only while filtered. */
   const sessionProviders = useMemo(() => {
@@ -1289,7 +1334,7 @@ export default function App() {
           }}
         >
           <div
-            className="modal"
+            className="modal wide"
             role="dialog"
             aria-modal="true"
             aria-label={S["settings.title"]}
@@ -1320,6 +1365,8 @@ export default function App() {
                 {S["settings.close"]}
               </button>
             </div>
+            <div className="modal-wide-body">
+            <div className="modal-wide-profile">
             <div className="field">
               <span className="field-label">{S["settings.photo"]}</span>
               {crop ? (
@@ -1442,6 +1489,21 @@ export default function App() {
                 maxLength={DESC_MAX_LENGTH}
               />
             </label>
+            </div>
+            {!crop && (
+            <div className="modal-wide-heatmap">
+              <span className="field-label">{S["settings.activity"]}</span>
+              <ActivityHeatmap
+                rows={heatRows}
+                loading={heatLoading}
+                loadError={heatError}
+                onRetry={loadHeatmap}
+                lang={lang}
+                groupPass={groupPass}
+              />
+            </div>
+            )}
+            </div>
           </div>
         </div>
       )}

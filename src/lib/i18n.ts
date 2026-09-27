@@ -81,9 +81,17 @@ const it = {
   "settings.photoType": "Formato non supportato: usa JPG, PNG o WebP.",
   "settings.photoDecode": "Lettura immagine fallita: prova con un altro file.",
   "settings.photoSave": "Salvataggio foto fallito: riprova.",
+  "settings.activity": "Attività",
   "settings.confirm": "Conferma",
   "settings.cancel": "Annulla",
   "settings.zoom": "Zoom",
+  "activity.title": "token negli ultimi 6 mesi",
+  "activity.less": "Meno",
+  "activity.more": "Più",
+  "activity.empty": "Nessuna attività negli ultimi 6 mesi.",
+  "activity.howWeCount": "Input + output giornalieri",
+  "activity.loadError": "Caricamento attività fallito.",
+  "activity.loading": "Caricamento attività…",
 };
 
 export type DictKey = keyof typeof it;
@@ -169,9 +177,17 @@ const en: Record<DictKey, string> = {
   "settings.photoType": "Unsupported format: use JPG, PNG or WebP.",
   "settings.photoDecode": "Failed to read image: try another file.",
   "settings.photoSave": "Failed to save photo: try again.",
+  "settings.activity": "Activity",
   "settings.confirm": "Confirm",
   "settings.cancel": "Cancel",
   "settings.zoom": "Zoom",
+  "activity.title": "tokens in the last 6 months",
+  "activity.less": "Less",
+  "activity.more": "More",
+  "activity.empty": "No activity in the last 6 months.",
+  "activity.howWeCount": "Daily input + output",
+  "activity.loadError": "Failed to load activity.",
+  "activity.loading": "Loading activity…",
 };
 
 export const STRINGS: Record<Lang, Record<DictKey, string>> = { it, en };

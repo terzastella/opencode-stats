@@ -174,6 +174,228 @@ input:focus-visible {
   gap: 14px;
 }
 
+.modal.wide {
+  width: min(1120px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: clip;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.modal.wide::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal.wide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal.wide::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+.modal-wide-body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.modal-wide-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.modal-wide-heatmap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ——— Activity heatmap (GitHub-style) ——— */
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.heatmap-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.heatmap-title {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.heatmap-scroll {
+  overflow-x: visible;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px 10px;
+  background: var(--panel-2);
+}
+
+.heatmap-months {
+  display: flex;
+  gap: 4px;
+  margin-left: 38px;
+  margin-bottom: 6px;
+}
+
+.heatmap-month {
+  flex: 1 0 18px;
+  min-width: 18px;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.heatmap-body {
+  display: flex;
+  gap: 8px;
+}
+
+.heatmap-days {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 18px;
+  padding-top: 0;
+  flex-shrink: 0;
+  width: 30px;
+}
+
+.heatmap-days span {
+  height: 18px;
+}
+
+/* Mon/Wed/Fri labels align to rows 0/2/4 of the 7-row grid (pitch 22px). */
+.heatmap-days span:nth-child(2) {
+  margin-top: 22px;
+}
+
+.heatmap-days span:nth-child(3) {
+  margin-top: 22px;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 4px;
+}
+
+.heatmap-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heat {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.heat-0 {
+  background: #161b22;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="light"] .heat-0 {
+  background: #ebedf0;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.heat-1 { background: #2e1a5e; border-color: transparent; }
+.heat-2 { background: #6d28d9; border-color: transparent; }
+.heat-3 { background: #a855f7; border-color: transparent; }
+.heat-4 { background: #d8b4fe; border-color: transparent; }
+
+:root[data-theme="light"] .heat-1 { background: #e9d5ff; }
+:root[data-theme="light"] .heat-2 { background: #c084fc; }
+:root[data-theme="light"] .heat-3 { background: #9333ea; }
+:root[data-theme="light"] .heat-4 { background: #5b21b6; }
+
+.heat-pad {
+  background: transparent;
+  border-color: transparent;
+}
+
+.heat-skel {
+  opacity: 0.55;
+  animation: heatpulse 1.4s ease-in-out infinite;
+}
+
+@keyframes heatpulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.2; }
+}
+
+.heat-key {
+  width: 14px;
+  height: 14px;
+}
+
+.heatmap-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 6px;
+  padding: 0 2px;
+}
+
+.heatmap-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+@media (max-width: 1080px) {
+  .modal-wide-body {
+    grid-template-columns: 1fr;
+  }
+  .modal.wide {
+    width: min(680px, calc(100vw - 40px));
+  }
+  /* Narrow screens only: horizontal scroll confined to the heatmap box. */
+  .heatmap-scroll {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  .heatmap-scroll::-webkit-scrollbar {
+    height: 8px;
+  }
+  .heatmap-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .heatmap-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+  }
+}
+
 .modal-head {
   display: flex;
   align-items: center;

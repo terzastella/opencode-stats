@@ -18,7 +18,7 @@ export const api = {
   /** Combined payload: overview + daily + models in a single backend scan. */
   dashboard: (days: number) =>
     demo
-      ? Promise.resolve(demoDashboard(isSkewedDemo()))
+      ? Promise.resolve(demoDashboard(isSkewedDemo(), days))
       : call<Dashboard>("dashboard", { days }),
   /**
    * Selection honesty data (sessions per model + dominant provider per
