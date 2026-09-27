@@ -41,6 +41,21 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run tauri build
 
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci --no-audit --no-fund
+      # Frontend unit tests (vitest) + Rust unit tests (cargo test --lib).
+      - run: npm test
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+
 # NOTE: CI is a gate only — no artifacts are uploaded. Public releases are
 # built locally with scripts/build-release.ps1, which scrubs build-machine
 # paths from the binary via --remap-path-prefix.
