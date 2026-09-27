@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-09-27
+
+### Added
+- First published release since v0.1.7: ships everything from the
+  tag-only v0.1.9/v0.1.10 (reasoning tokens, true all-time range,
+  per-period sessions, real provider attribution, ECharts XSS guard,
+  hardened CSP/photo/DB handling, unit tests).
+
+### Fixed
+- CI `tests` job: Rust tests run on the windows runner (compiling the
+  Tauri lib on Linux needs system GTK dev packages).
+- Removed leftover merge markers that reddened CI.
+
 ## [0.1.10] - 2026-09-27
 
 ### Added
