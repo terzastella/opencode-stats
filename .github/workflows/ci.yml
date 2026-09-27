@@ -39,6 +39,9 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci --no-audit --no-fund
+      # Rust unit tests run here (windows): compiling the Tauri lib on
+      # Linux would need system GTK dev packages that CI doesn't install.
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
       - run: npm run tauri build
 
   tests:
@@ -50,11 +53,10 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-      - uses: dtolnay/rust-toolchain@stable
       - run: npm ci --no-audit --no-fund
-      # Frontend unit tests (vitest) + Rust unit tests (cargo test --lib).
+      # Frontend unit tests (vitest) only — Rust tests live in the
+      # windows `tauri` job (needs no extra system dependencies there).
       - run: npm test
-      - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
 
 # NOTE: CI is a gate only — no artifacts are uploaded. Public releases are
 # built locally with scripts/build-release.ps1, which scrubs build-machine
