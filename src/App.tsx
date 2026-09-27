@@ -13,6 +13,7 @@ import { STRINGS, type Lang } from "./lib/i18n";
 import { fmtBytes, fmtCompact, fmtCost, fmtCostCompact, fmtDayIT, fmtInt, timeHM } from "./lib/format";
 import {
   DESC_MAX_LENGTH,
+  PHOTO_MAX_BYTES,
   loadProfile,
   saveProfile,
   type ProviderView,
@@ -264,25 +265,55 @@ export default function App() {
   const onPhotoFile = (f: File | undefined) => {
     setPhotoError(null);
     if (!f) return;
-    if (!f.type.startsWith("image/") || f.size > 10 * 1024 * 1024) {
-      setPhotoError(S["settings.photoError"]);
+    // Size first so oversized files always report the size error.
+    if (f.size > 10 * 1024 * 1024) {
+      setPhotoError(S["settings.photoTooBig"]);
       return;
     }
-    const url = URL.createObjectURL(f);
-    const img = new Image();
-    img.onload = () => {
-      if (img.width < 2 || img.height < 2) {
-        URL.revokeObjectURL(url);
-        setPhotoError(S["settings.photoError"]);
+    const mime = (f.type || "").toLowerCase();
+    const name = f.name || "";
+    const byType = mime.startsWith("image/");
+    const byExt = /\.(jpe?g|png|webp|gif|avif|bmp|svg)$/i.test(name);
+    // Explicitly unsupported in <img>/canvas decoders: report type, not size.
+    if (mime === "image/heic" || mime === "image/heif" || mime === "image/tiff" || /\.hei[cf]$|\.tif?f$/i.test(name)) {
+      setPhotoError(S["settings.photoType"]);
+      return;
+    }
+    // Tolerate empty MIME (some Windows pickers) when the extension looks like an image.
+    if (!byType && !byExt) {
+      setPhotoError(S["settings.photoType"]);
+      return;
+    }
+    // NOTE: FileReader data URL instead of URL.createObjectURL(blob:).
+    // The Tauri CSP img-src allows data: but not blob:, so blob: images
+    // fail with img.onerror in the desktop app (previously misreported as "under 10 MB").
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setPhotoError(S["settings.photoDecode"]);
+    };
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (!dataUrl.startsWith("data:image/") && !dataUrl.startsWith("data:application/octet-stream")) {
+        setPhotoError(S["settings.photoDecode"]);
         return;
       }
-      openCrop(img, url);
+      const img = new Image();
+      img.onload = () => {
+        if (!Number.isFinite(img.width) || !Number.isFinite(img.height) || img.width < 2 || img.height < 2) {
+          setPhotoError(S["settings.photoDecode"]);
+          return;
+        }
+        openCrop(img, dataUrl);
+      };
+      img.onerror = () => {
+        if (import.meta.env.DEV) {
+          console.warn(`[photo] decode failed name=${name} type=${f.type} size=${f.size}`);
+        }
+        setPhotoError(S["settings.photoDecode"]);
+      };
+      img.src = dataUrl;
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      setPhotoError(S["settings.photoError"]);
-    };
-    img.src = url;
+    reader.readAsDataURL(f);
   };
 
   // Demo hook (?demo=crop): synthetic test image straight into the editor.
@@ -344,19 +375,35 @@ export default function App() {
       const half = STAGE / 2 / crop.scale;
       const cx = crop.iw / 2 - crop.x / crop.scale;
       const cy = crop.ih / 2 - crop.y / crop.scale;
+      if (!Number.isFinite(half) || !Number.isFinite(cx) || !Number.isFinite(cy) || half <= 0) {
+        setPhotoError(S["settings.photoSave"]);
+        return;
+      }
       const canvas = document.createElement("canvas");
       canvas.width = 256;
       canvas.height = 256;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        setPhotoError(S["settings.photoError"]);
+        setPhotoError(S["settings.photoSave"]);
         return;
       }
       ctx.drawImage(img, cx - half, cy - half, half * 2, half * 2, 0, 0, 256, 256);
-      setProfile((p) => ({ ...p, photo: canvas.toDataURL("image/jpeg", 0.87) }));
+      // Shrink quality until the data URL fits the localStorage cap,
+      // so cleanPhoto() never silently discards what we just saved.
+      let quality = 0.82;
+      let dataUrl = canvas.toDataURL("image/jpeg", quality);
+      while (dataUrl.length > PHOTO_MAX_BYTES && quality > 0.5) {
+        quality = Math.round((quality - 0.1) * 100) / 100;
+        dataUrl = canvas.toDataURL("image/jpeg", quality);
+      }
+      if (dataUrl.length > PHOTO_MAX_BYTES) {
+        setPhotoError(S["settings.photoSave"]);
+        return;
+      }
+      setProfile((p) => ({ ...p, photo: dataUrl }));
       closeCrop();
     } catch {
-      setPhotoError(S["settings.photoError"]);
+      setPhotoError(S["settings.photoSave"]);
     }
   };
 
