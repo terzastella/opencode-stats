@@ -23,8 +23,8 @@ tauri-build = { version = "2", features = [] }
 # Caret floor guards GHSA-7gmj-67g7-phm9 (tauri <=2.11.0, fixed in 2.11.1).
 tauri = { version = "2.11.1", features = [] }
 serde = { version = "1", features = ["derive"] }
-rusqlite = { version = "0.32", features = ["bundled"] }
-dirs = "5"
+rusqlite = { version = "0.40", features = ["bundled"] }
+dirs = "6"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
