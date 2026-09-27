@@ -229,6 +229,7 @@ pub fn session_list_inner(days: u32, limit: u32) -> Result<Vec<SessionRow>, Stri
     // Per-period attribution: the session row shows only assistant-message
     // usage inside the window (time_created >= cutoff), not the lifetime
     // session aggregates — so the list stays coherent with KPIs and charts.
+    // HAVING hides sessions with no in-window assistant usage ($0 rows).
     let mut stmt = conn
         .prepare(
             "SELECT s.id, COALESCE(s.title,''), COALESCE(s.directory,''),
@@ -243,6 +244,7 @@ pub fn session_list_inner(days: u32, limit: u32) -> Result<Vec<SessionRow>, Stri
                 AND m.time_created >= ?1 AND json_extract(m.data,'$.role') = 'assistant'
              WHERE s.time_updated >= ?1
              GROUP BY s.id
+             HAVING COUNT(m.session_id) > 0
              ORDER BY s.time_updated DESC
              LIMIT ?2",
         )

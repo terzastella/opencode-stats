@@ -1,0 +1,5 @@
+# Pinned toolchain for reproducible builds (local + CI).
+# Check with: rustc --version
+[toolchain]
+channel = "1.98.1"
+profile = "minimal"

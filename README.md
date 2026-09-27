@@ -93,8 +93,8 @@ Filtered views and recent sessions show period-attributed numbers, which may
 differ from `opencode stats` upstream by design.
 
 The app is OpenCode-only: it only reads its database — no API keys, no auth,
-no network (localhost only). Original files are only ever read.
-No telemetry of any kind.
+no external network access at runtime (localhost only). Original files are
+only ever read. No telemetry of any kind.
 </details>
 
 <details>
@@ -230,8 +230,8 @@ Viste filtrate e sessioni recenti mostrano numeri attribuiti al periodo, che
 possono differire da `opencode stats` ufficiale per scelta.
 
 L'app è dedicata a OpenCode: legge solo il suo database, niente chiavi API,
-niente auth, niente rete (solo localhost). I file originali sono sempre e solo letti.
-Nessuna telemetria di alcun tipo.
+niente auth, nessuna rete esterna a runtime (solo localhost). I file originali
+sono sempre e solo letti. Nessuna telemetria di alcun tipo.
 </details>
 
 <details>

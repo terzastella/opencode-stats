@@ -613,9 +613,20 @@ export default function App() {
     loadHeatmap();
   }, [settingsOpen, loadHeatmap]);
 
-  /** sessionId -> per-provider usage in the window (only while filtered). */
+  /** sessionId -> per-provider-group usage in the window (only while filtered).
+   * Different raw providers can collapse to the same group (e.g. "openai"
+   * and "openai/gpt-4"): their numbers are summed, never overwritten. */
   const sessionUse = useMemo(() => {
     const map = new Map<string, Map<string, SessionProviderStat>>();
+    const add = (a: SessionProviderStat, b: SessionProviderStat): SessionProviderStat => ({
+      sessionId: a.sessionId,
+      provider: a.provider,
+      messages: a.messages + b.messages,
+      input: a.input + b.input,
+      output: a.output + b.output,
+      reasoning: a.reasoning + b.reasoning,
+      cost: a.cost + b.cost,
+    });
     for (const sp of selStats?.session_stats ?? []) {
       if (!sp.sessionId) continue;
       let inner = map.get(sp.sessionId);
@@ -623,7 +634,9 @@ export default function App() {
         inner = new Map();
         map.set(sp.sessionId, inner);
       }
-      inner.set(providerGroup(sp.provider), sp);
+      const g = providerGroup(sp.provider);
+      const prev = inner.get(g);
+      inner.set(g, prev ? add(prev, sp) : sp);
     }
     return map;
   }, [selStats]);
