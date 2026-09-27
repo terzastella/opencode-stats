@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-09-27
+
+### Added
+- Reasoning tokens as first-class metric: separate Reasoning row, Total
+  generated (output + reasoning), per-model column, chart series, heatmap
+  totals.
+- True all-time range (was capped at 365 days) with automatic
+  day/week/month chart granularity.
+- Unit tests: 19 frontend (vitest, `npm test`) + 3 Rust (`cargo test`),
+  with a dedicated CI job.
+
+### Changed
+- Recent sessions now show per-period numbers from message attribution
+  instead of lifetime session aggregates.
+- Provider filter uses real per-(session, provider) attribution instead of
+  the dominant provider (filtered numbers intentionally diverge from
+  `opencode stats` upstream).
+- Merged 8 Dependabot updates (tauri 2.11.6, rusqlite 0.40.2, dirs 6,
+  vite 8.3.1, react 19.3, actions v7).
+
+### Fixed
+- Removed leftover merge markers that reddened CI.
+
 ## [0.1.9] - 2026-09-27
 
 ### Security

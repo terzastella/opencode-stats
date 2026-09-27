@@ -45,6 +45,8 @@ used at least once (the app reads its local database).
 > The app is not code-signed: Windows shows "unknown publisher" — that's expected.
 > On SmartScreen: "More info → Run anyway".
 
+**v0.1.10** — reasoning tokens, true all-time range, per-period sessions, real
+provider attribution, unit tests (vitest + cargo).
 **v0.1.9** — security hardening: ECharts stored-XSS guard, stricter CSP, photo
 allowlist, DB path/size checks; CI least-privilege + Dependabot.
 **v0.1.8** — fixed profile photo upload (valid images wrongly rejected as "over
@@ -85,6 +87,8 @@ on Windows: `%USERPROFILE%\.local\share\opencode\opencode.db`):
 
 Providers used through OpenCode (`opencode/*`, `ollama/*`, `lmstudio/*`, `llama.cpp/*`, …)
 are filterable with **Combined / Split** views and stable per-provider colors.
+Filtered views and recent sessions show period-attributed numbers, which may
+differ from `opencode stats` upstream by design.
 
 The app is OpenCode-only: it only reads its database — no API keys, no auth,
 no network (localhost only). Original files are only ever read.
@@ -106,7 +110,7 @@ Without Tauri (`npm run dev`) the UI shows a warning because Rust invokes are un
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.9_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.10_x64-setup.exe (+ .msi)
 ```
 
 For published releases, build with `scripts/build-release.ps1` instead: same output,
@@ -175,6 +179,8 @@ già usato almeno una volta (l'app legge il suo database locale).
 > L'app non è firmata digitalmente: Windows mostra "autore sconosciuto" — è normale.
 > Su SmartScreen: "Ulteriori informazioni → Esegui comunque".
 
+**v0.1.10** — reasoning token, vero all-time, sessioni per-periodo,
+attribuzione provider reale, unit test (vitest + cargo).
 **v0.1.9** — hardening sicurezza: anti-XSS nei grafici, CSP rafforzata,
 allowlist foto, controlli path/dimensione DB; CI least-privilege + Dependabot.
 **v0.1.8** — corretto il caricamento della foto profilo (immagini valide
@@ -216,6 +222,8 @@ su Windows: `%USERPROFILE%\.local\share\opencode\opencode.db`):
 
 I provider usati via OpenCode (`opencode/*`, `ollama/*`, `lmstudio/*`, `llama.cpp/*`, …)
 sono filtrabili con vista **Sommati / Singoli** e colori stabili per provider.
+Viste filtrate e sessioni recenti mostrano numeri attribuiti al periodo, che
+possono differire da `opencode stats` ufficiale per scelta.
 
 L'app è dedicata a OpenCode: legge solo il suo database, niente chiavi API,
 niente auth, niente rete (solo localhost). I file originali sono sempre e solo letti.
@@ -237,7 +245,7 @@ Senza Tauri (`npm run dev`) l'UI mostra un avviso perché gli invoke Rust non so
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.9_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.10_x64-setup.exe (+ .msi)
 ```
 
 Per le release pubblicate, compila invece con `scripts/build-release.ps1`: stesso output,
