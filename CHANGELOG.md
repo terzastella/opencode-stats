@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-09-28
+
+### Added
+- Verifiable heatmap: per-day Input/Output/Reasoning breakdown, instant
+  custom hover tooltip with viewport flipping, header split and real date
+  range in footer, localized weekday labels.
+- All-time anti-rescan: `watermark()` probe skips full rescans on unchanged
+  DB (for multi-GB databases).
+
+### Changed
+- Database cap 2 GiB -> 32 GiB (real opencode.db files reach 8+ GB).
+- Split view includes reasoning tokens like every other total.
+- Demo all-time dataset (400 days x 9 providers).
+
+### Fixed
+- Aligned react-dom with react 19.3 (mismatched versions blanked the app).
+- Heatmap hooks before early returns (rendered-more-hooks crash on open).
+
 ## [0.1.11] - 2026-09-27
 
 ### Added

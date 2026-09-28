@@ -45,6 +45,8 @@ used at least once (the app reads its local database).
 > The app is not code-signed: Windows shows "unknown publisher" — that's expected.
 > On SmartScreen: "More info → Run anyway".
 
+**v0.1.12** — verifiable heatmap (per-day hover stats), 32 GiB DB cap,
+all-time anti-rescan, react-dom alignment fix.
 **v0.1.11** — first release since v0.1.7: reasoning tokens, true all-time,
 per-period sessions, provider attribution, tests; green CI.
 **v0.1.10** — reasoning tokens, true all-time range, per-period sessions, real
@@ -112,7 +114,7 @@ Without Tauri (`npm run dev`) the UI shows a warning because Rust invokes are un
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.11_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.12_x64-setup.exe (+ .msi)
 ```
 
 For published releases, build with `scripts/build-release.ps1` instead: same output,
@@ -181,6 +183,8 @@ già usato almeno una volta (l'app legge il suo database locale).
 > L'app non è firmata digitalmente: Windows mostra "autore sconosciuto" — è normale.
 > Su SmartScreen: "Ulteriori informazioni → Esegui comunque".
 
+**v0.1.12** — heatmap verificabile (statistiche al passaggio mouse), cap DB
+32 GiB, anti-rescan all-time, fix allineamento react-dom.
 **v0.1.11** — prima release dalla v0.1.7: reasoning token, vero all-time,
 sessioni per-periodo, attribuzione provider, test; CI verde.
 **v0.1.10** — reasoning token, vero all-time, sessioni per-periodo,
@@ -249,7 +253,7 @@ Senza Tauri (`npm run dev`) l'UI mostra un avviso perché gli invoke Rust non so
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.11_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.12_x64-setup.exe (+ .msi)
 ```
 
 Per le release pubblicate, compila invece con `scripts/build-release.ps1`: stesso output,
