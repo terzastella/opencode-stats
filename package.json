@@ -18,6 +18,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "shots": "node scripts/shots.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.2",
+    "playwright": "^1.63.0",
     "typescript": "6.0.3",
     "vite": "^8.3.1",
     "vitest": "^5.0.2"

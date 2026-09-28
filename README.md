@@ -25,9 +25,9 @@ Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.
 | | |
 |---|---|
 | 📊 | Input/output tokens, cost, cache — daily, weekly, all-time |
-| 📈 | Line, bar & donut charts, top models, recent sessions |
+| 📈 | Line, bar & donut charts, top models, recent sessions, reasoning tokens |
 | 🎛️ | Per-provider filters, Combined / Split views, brand icons |
-| 👤 | Customizable profile (photo, name, bio), light/dark theme |
+| 👤 | Customizable profile (photo, name, bio), activity heatmap, light/dark theme |
 | 🌍 | English + Italian interface |
 | 🔒 | 100% local: read-only DB access, no keys, no auth, no telemetry |
 
@@ -163,9 +163,9 @@ grafici e tabelle, profilo personalizzabile, interfaccia EN/IT.
 | | |
 |---|---|
 | 📊 | Token input/output, costi, cache — giornaliero, settimanale, tutto |
-| 📈 | Grafici linee, barre e torta, top modelli, sessioni recenti |
+| 📈 | Grafici linee, barre e torta, top modelli, sessioni recenti, reasoning |
 | 🎛️ | Filtri per provider, viste Sommati / Singoli, loghi brand |
-| 👤 | Profilo personalizzabile (foto, nome, bio), tema chiaro/scuro |
+| 👤 | Profilo personalizzabile (foto, nome, bio), heatmap attività, tema chiaro/scuro |
 | 🌍 | Interfaccia inglese + italiano |
 | 🔒 | 100% locale: sola lettura DB, niente chiavi, niente telemetria |
 
