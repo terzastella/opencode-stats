@@ -435,14 +435,17 @@ export default function App() {
   const refreshingRef = useRef(false);
   const loadedOnceRef = useRef(false);
   const sigRef = useRef("");
+  // Last all-time watermark key; skips full rescans when nothing changed.
+  const watermarkRef = useRef<string | null>(null);
 
   const refresh = useCallback(async (opts?: { manual?: boolean; boot?: boolean }) => {
     // Skip overlapping ticks: a slow cycle must never pile up new ones.
     if (refreshingRef.current) return;
     refreshingRef.current = true;
     const days = RANGE_DAYS[profile.range];
+    const force = opts?.manual === true || opts?.boot === true || !loadedOnceRef.current;
     // Spinner only on boot or manual refresh; background ticks stay silent.
-    if (opts?.manual === true || opts?.boot === true || !loadedOnceRef.current) setLoading(true);
+    if (force) setLoading(true);
     const t0 = performance.now();
     try {
       // Cheap existence check FIRST: no database -> friendly setup screen,
@@ -457,10 +460,36 @@ export default function App() {
         return;
       }
       setNeedsSetup(false);
+      // All-time auto ticks: probe the watermark first and skip the heavy
+      // scans when the DB hasn't moved. Manual/boot/first runs always scan.
+      // sigRef below stays as a second defense (TOCTOU, replaced DB files).
+      if (days === 0 && !force && loadedOnceRef.current) {
+        const wm = await api.watermark();
+        const key = `all:${wm.maxMessageMs}:${wm.maxSessionMs}:${wm.messages}:${wm.sessions}`;
+        if (key === watermarkRef.current) {
+          setLoading(false);
+          setDiagMs(Math.round(performance.now() - t0));
+          setUpdatedMs(Date.now());
+          return;
+        }
+        watermarkRef.current = key;
+      }
       const [dash, se] = await Promise.all([
         api.dashboard(days),
         api.sessionList(days, 100),
       ]);
+      if (days === 0) {
+        // Seed the watermark in the background (never blocks the UI) so
+        // the next auto tick can skip.
+        void api
+          .watermark()
+          .then((wm) => {
+            watermarkRef.current = `all:${wm.maxMessageMs}:${wm.maxSessionMs}:${wm.messages}:${wm.sessions}`;
+          })
+          .catch(() => {
+            watermarkRef.current = null;
+          });
+      }
       const sig = [
         info.exists, info.path, info.sessions, info.messages,
         dash.daily.length, dash.models.length, se.length,
@@ -770,7 +799,8 @@ export default function App() {
       if (!key) continue;
       const i = idx.get(key);
       if (i === undefined) continue;
-      arr[i] += r.input + r.output;
+      // Same total as `buckets`/heatmap (input+output+reasoning).
+      arr[i] += r.input + r.output + r.reasoning;
     }
     return groups.map((g) => ({ group: g, values: data.get(g)! }));
   }, [daily, range, buckets, filters.selected, filters.groups]);

@@ -30,7 +30,8 @@ pub fn opencode_db_path() -> PathBuf {
 }
 
 /// Refuse absurd files before SQLite touches them (friendly errors, no panic).
-const MAX_DB_BYTES: u64 = 2_147_483_648; // 2 GiB, far above any real opencode.db
+/// 32 GiB: real opencode.db files reach multi-GB size (seen 8.7 GB).
+const MAX_DB_BYTES: u64 = 34_359_738_368;
 
 fn open_ro(path: &std::path::Path) -> Result<Connection, String> {
     // No symlinks: an env override pointing elsewhere must be explicit, and
@@ -218,6 +219,40 @@ pub fn db_info_inner() -> Result<DbInfo, String> {
         size_bytes,
         sessions,
         messages,
+    })
+}
+
+/// Cheap freshness probe (no JSON extraction): lets the frontend skip a full
+/// rescan when nothing changed. Used by the all-time auto-refresh tick.
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Watermark {
+    pub max_message_ms: i64,
+    pub max_session_ms: i64,
+    pub messages: i64,
+    pub sessions: i64,
+}
+
+pub fn watermark_inner() -> Result<Watermark, String> {
+    let path = opencode_db_path();
+    let conn = open_ro(&path)?;
+    let max_message_ms: i64 = conn
+        .query_row("SELECT COALESCE(MAX(time_created),0) FROM message", [], |r| {
+            r.get(0)
+        })
+        .map_err(|e| format!("watermark messages failed: {e}"))?;
+    let (max_session_ms, messages, sessions): (i64, i64, i64) = conn
+        .query_row(
+            "SELECT COALESCE(MAX(time_updated),0), COUNT(*), COUNT(DISTINCT id) FROM session",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .map_err(|e| format!("watermark sessions failed: {e}"))?;
+    Ok(Watermark {
+        max_message_ms,
+        max_session_ms,
+        messages,
+        sessions,
     })
 }
 

@@ -1,5 +1,5 @@
 import { invokeWithTimeout } from "./tauri-safe";
-import type { Dashboard, DbInfo, SelectionStats, SessionRow } from "./types";
+import type { Dashboard, DbInfo, SelectionStats, SessionRow, Watermark } from "./types";
 import { demoDashboard, demoDb, demoSessions, isDemo, isSkewedDemo } from "./demo";
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -11,6 +11,16 @@ const demo = typeof window !== "undefined" && isDemo();
 
 export const api = {
   dbInfo: () => (demo ? Promise.resolve(demoDb()) : call<DbInfo>("db_info")),
+  watermark: () =>
+    demo
+      // Always-changing stub so demo mode never takes the skip path.
+      ? Promise.resolve({
+          maxMessageMs: Date.now(),
+          maxSessionMs: Date.now(),
+          messages: 0,
+          sessions: 0,
+        } as Watermark)
+      : call<Watermark>("watermark"),
   sessionList: (days: number, limit: number) =>
     demo
       ? Promise.resolve(demoSessions().slice(0, limit))

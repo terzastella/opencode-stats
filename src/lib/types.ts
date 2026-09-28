@@ -6,6 +6,14 @@ export interface DbInfo {
   messages: number;
 }
 
+/** Cheap freshness probe (no JSON extraction) for the auto-refresh tick. */
+export interface Watermark {
+  maxMessageMs: number;
+  maxSessionMs: number;
+  messages: number;
+  sessions: number;
+}
+
 export interface Overview {
   sessions: number;
   messages: number;

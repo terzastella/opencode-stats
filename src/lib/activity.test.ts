@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateDayBreakdown,
   aggregateTokensByDay,
   buildHeatmapWeeks,
   granularityForSpan,
   lastNDays,
   levelFor,
   monthKey,
+  placeTip,
   sortedActiveValues,
 } from "./activity";
 import type { DayStat } from "./types";
@@ -70,6 +72,24 @@ describe("aggregateTokensByDay", () => {
   });
 });
 
+describe("aggregateDayBreakdown", () => {
+  const days = ["2026-09-26", "2026-09-27"];
+  it("splits input/output/reasoning with total", () => {
+    const rows = [
+      row("2026-09-27", "opencode/m", 100, 50, 25),
+      row("2026-09-27", "ollama/m", 10, 5, 0),
+    ];
+    const m = aggregateDayBreakdown(rows, () => true, days);
+    expect(m.get("2026-09-27")).toEqual({ input: 110, output: 55, reasoning: 25, total: 190 });
+    expect(m.get("2026-09-26")).toEqual({ input: 0, output: 0, reasoning: 0, total: 0 });
+  });
+  it("header math holds: input+output+reasoning === total", () => {
+    const rows = [row("2026-09-27", "opencode/m", 7, 3, 2)];
+    const b = aggregateDayBreakdown(rows, () => true, days).get("2026-09-27")!;
+    expect(b.input + b.output + b.reasoning).toBe(b.total);
+  });
+});
+
 describe("buildHeatmapWeeks", () => {
   it("totals and bounds the grid", () => {
     const days = lastNDays(14);
@@ -88,6 +108,22 @@ describe("levelFor", () => {
     expect(levelFor(5, [])).toBe(0);
     expect(levelFor(1, [1, 2, 3, 4])).toBe(1);
     expect(levelFor(10, [1, 2, 3, 4])).toBe(4);
+  });
+});
+
+describe("placeTip", () => {
+  it("opens down-right by default", () => {
+    expect(placeTip(100, 100, 190, 122, 1000, 800)).toEqual({ left: 114, top: 114 });
+  });
+  it("flips left near the right edge", () => {
+    expect(placeTip(950, 100, 190, 122, 1000, 800)).toEqual({ left: 746, top: 114 });
+  });
+  it("flips up near the bottom edge", () => {
+    expect(placeTip(100, 750, 190, 122, 1000, 800)).toEqual({ left: 114, top: 614 });
+  });
+  it("flips both in the corner and clamps", () => {
+    expect(placeTip(990, 790, 190, 122, 1000, 800)).toEqual({ left: 786, top: 654 });
+    expect(placeTip(0, 0, 2000, 2000, 1000, 800)).toEqual({ left: 4, top: 4 });
   });
 });
 

@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  aggregateDayBreakdown,
   aggregateTokensByDay,
   buildHeatmapWeeks,
   lastNDays,
   levelFor,
+  placeTip,
   sortedActiveValues,
   type GroupPass,
 } from "../lib/activity";
@@ -29,10 +31,48 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
   const data = useMemo(() => {
     if (!rows) return null;
     const days = lastNDays(YEAR_DAYS);
+    const breakdown = aggregateDayBreakdown(rows, groupPass, days);
     const totals = aggregateTokensByDay(rows, groupPass, days);
     const { weeks, total, max } = buildHeatmapWeeks(days, totals, lang);
-    return { weeks, total, max, totals, active: sortedActiveValues(totals) };
+    let input = 0;
+    let output = 0;
+    let reasoning = 0;
+    for (const b of breakdown.values()) {
+      input += b.input;
+      output += b.output;
+      reasoning += b.reasoning;
+    }
+    return {
+      weeks,
+      total,
+      max,
+      totals,
+      breakdown,
+      input,
+      output,
+      reasoning,
+      first: days[0],
+      last: days[days.length - 1],
+      active: sortedActiveValues(totals),
+    };
   }, [rows, lang, groupPass]);
+
+  // Hooks first, unconditionally: anything below the early returns must
+  // not call hooks (React would see a different hook count per render).
+  // Instant custom hover tooltip (no native title delay).
+  const [hover, setHover] = useState<{ day: string; x: number; y: number } | null>(null);
+  const tipRef = useRef<HTMLDivElement | null>(null);
+  const [tipSize, setTipSize] = useState({ w: 190, h: 122 });
+  useLayoutEffect(() => {
+    if (hover && tipRef.current) {
+      const r = tipRef.current.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setTipSize({ w: Math.ceil(r.width), h: Math.ceil(r.height) });
+    }
+  }, [hover]);
+  const hoverData = hover && data ? data.breakdown.get(hover.day) : undefined;
+  const tipPos = hover
+    ? placeTip(hover.x, hover.y, tipSize.w, tipSize.h, window.innerWidth, window.innerHeight)
+    : null;
 
   // Error first: reachable even when rows is null (e.g. dev without backend).
   if (loadError && !loading) {
@@ -64,9 +104,9 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
           </div>
           <div className="heatmap-body">
             <div className="heatmap-days">
-              <span>Mon</span>
-              <span>Wed</span>
-              <span>Fri</span>
+              <span>{S["activity.mon"]}</span>
+              <span>{S["activity.wed"]}</span>
+              <span>{S["activity.fri"]}</span>
             </div>
             <div className="heatmap-grid">
               {Array.from({ length: 30 }, (_, w) => (
@@ -83,7 +123,8 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
     );
   }
 
-  const { weeks, total, totals, active } = data;
+  const { weeks, total, input, output, reasoning, first, last, active } = data;
+
   if (total <= 0) {
     return (
       <div className="heatmap">
@@ -105,7 +146,11 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
           {fmtCompact(total)} {S["activity.title"]}
         </span>
       </div>
-      <div className="heatmap-scroll">
+      <div className="heatmap-how">
+        {S["series.input"]} {fmtCompact(input)} · {S["series.output"]} {fmtCompact(output)} ·{" "}
+        {S["series.reasoning"]} {fmtCompact(reasoning)}
+      </div>
+      <div className="heatmap-scroll" onScroll={() => setHover(null)}>
         <div className="heatmap-months" aria-hidden="true">
           {weeks.map((w, i) => (
             <span key={i} className="heatmap-month">
@@ -115,22 +160,22 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
         </div>
         <div className="heatmap-body">
           <div className="heatmap-days" aria-hidden="true">
-            <span>Mon</span>
-            <span>Wed</span>
-            <span>Fri</span>
+            <span>{S["activity.mon"]}</span>
+            <span>{S["activity.wed"]}</span>
+            <span>{S["activity.fri"]}</span>
           </div>
-          <div className="heatmap-grid">
+          <div className="heatmap-grid" onMouseLeave={() => setHover(null)}>
             {weeks.map((w, wi) => (
               <div className="heatmap-col" key={wi}>
                 {w.cells.map((c, ci) => {
                   if (!c) return <span className="heat heat-pad" key={ci} />;
                   const lv = levelFor(c.value, active);
-                  const v = totals.get(c.day) ?? 0;
                   return (
                     <span
                       key={ci}
                       className={`heat heat-${lv}`}
-                      title={`${fmtCompact(v)} tokens · ${fmtDayIT(c.day, lang)}`}
+                      onMouseEnter={(e) => setHover({ day: c.day, x: e.clientX, y: e.clientY })}
+                      onMouseMove={(e) => setHover({ day: c.day, x: e.clientX, y: e.clientY })}
                     />
                   );
                 })}
@@ -139,7 +184,9 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
           </div>
         </div>
         <div className="heatmap-foot">
-          <span className="heatmap-how">{S["activity.howWeCount"]}</span>
+          <span className="heatmap-how">
+            {fmtDayIT(first, lang)} – {fmtDayIT(last, lang)} · {S["activity.howWeCount"]}
+          </span>
           <span className="heatmap-legend">
             {S["activity.less"]}
             {[0, 1, 2, 3, 4].map((l) => (
@@ -149,6 +196,30 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
           </span>
         </div>
       </div>
+      {hover && hoverData && tipPos && (
+        <div ref={tipRef} className="heat-tip" style={{ left: tipPos.left, top: tipPos.top }}>
+          <div className="heat-tip-day">{fmtDayIT(hover.day, lang)}</div>
+          <div className="heat-tip-row">
+            <span className="heat-dot in" />
+            <span>{S["series.input"]}</span>
+            <strong>{fmtCompact(hoverData.input)}</strong>
+          </div>
+          <div className="heat-tip-row">
+            <span className="heat-dot out" />
+            <span>{S["series.output"]}</span>
+            <strong>{fmtCompact(hoverData.output)}</strong>
+          </div>
+          <div className="heat-tip-row">
+            <span className="heat-dot rea" />
+            <span>{S["series.reasoning"]}</span>
+            <strong>{fmtCompact(hoverData.reasoning)}</strong>
+          </div>
+          <div className="heat-tip-total">
+            <span>{S["kpi.totalGenerated"]}</span>
+            <strong>{fmtCompact(hoverData.total)}</strong>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

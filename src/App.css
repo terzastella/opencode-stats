@@ -338,6 +338,68 @@ input:focus-visible {
   border-color: transparent;
 }
 
+/* Instant custom hover tooltip (no native title delay). */
+.heat-tip {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.heat-tip-day {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+
+.heat-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dim);
+}
+
+.heat-tip-row strong,
+.heat-tip-total strong {
+  margin-left: auto;
+  padding-left: 14px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.heat-tip-total {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-top: 1px solid var(--border);
+  padding-top: 5px;
+  margin-top: 2px;
+  font-weight: 650;
+}
+
+.heat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.heat-dot.in { background: var(--text); }
+.heat-dot.out { background: var(--faint); }
+.heat-dot.rea { background: #a855f7; }
+
+:root[data-theme="light"] .heat-dot.rea { background: #7c3aed; }
+
 .heat-skel {
   opacity: 0.55;
   animation: heatpulse 1.4s ease-in-out infinite;
@@ -369,6 +431,11 @@ input:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+.heatmap-how {
+  font-size: 11px;
+  color: var(--faint);
 }
 
 @media (max-width: 1080px) {

@@ -42,14 +42,36 @@ export function aggregateTokensByDay(
   days: string[],
 ): Map<string, number> {
   const map = new Map<string, number>(days.map((d) => [d, 0]));
+  for (const [day, b] of aggregateDayBreakdown(rows, groupPass, days)) {
+    map.set(day, b.total);
+  }
+  return map;
+}
+
+export interface DayBreakdown {
+  input: number;
+  output: number;
+  reasoning: number;
+  total: number;
+}
+
+/** Per-day metric split (input/output/reasoning + total), zeros prefilled. */
+export function aggregateDayBreakdown(
+  rows: DayStat[],
+  groupPass: GroupPass,
+  days: string[],
+): Map<string, DayBreakdown> {
+  const zero = (): DayBreakdown => ({ input: 0, output: 0, reasoning: 0, total: 0 });
+  const map = new Map<string, DayBreakdown>(days.map((d) => [d, zero()]));
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
   for (const r of rows) {
-    if (!map.has(r.day)) continue;
+    const b = map.get(r.day);
+    if (!b) continue;
     if (!groupPass(providerGroup(r.provider))) continue;
-    const v =
-      (Number.isFinite(r.input) ? r.input : 0) +
-      (Number.isFinite(r.output) ? r.output : 0) +
-      (Number.isFinite(r.reasoning) ? r.reasoning : 0);
-    map.set(r.day, (map.get(r.day) ?? 0) + v);
+    b.input += num(r.input);
+    b.output += num(r.output);
+    b.reasoning += num(r.reasoning);
+    b.total = b.input + b.output + b.reasoning;
   }
   return map;
 }
@@ -140,4 +162,27 @@ export function levelFor(value: number, sortedActive: number[]): number {
 /** Sorted ascending positive values, used for quartile thresholds. */
 export function sortedActiveValues(totals: Map<string, number>): number[] {
   return [...totals.values()].filter((v) => v > 0).sort((a, b) => a - b);
+}
+
+export interface TipPlacement {
+  left: number;
+  top: number;
+}
+
+/**
+ * Place a fixed hover tooltip near the cursor, flipping inside the viewport
+ * when it would overflow. Pure (unit-tested).
+ */
+export function placeTip(
+  x: number,
+  y: number,
+  tipW: number,
+  tipH: number,
+  viewW: number,
+  viewH: number,
+  gap = 14,
+): TipPlacement {
+  const left = x + gap + tipW > viewW ? x - gap - tipW : x + gap;
+  const top = y + gap + tipH > viewH ? y - gap - tipH : y + gap;
+  return { left: Math.max(4, left), top: Math.max(4, top) };
 }

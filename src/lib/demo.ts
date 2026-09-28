@@ -20,24 +20,38 @@ function daysBack(n: number): string {
 }
 
 export const DEMO_DAYS = 14;
+/** All-time demo span (days=0): exercises week granularity + Other/split. */
+export const DEMO_ALL_DAYS = 400;
 
 export function demoDb(): DbInfo {
   return { path: "demo/opencode.db", exists: true, sizeBytes: 123456, sessions: 12, messages: 340 };
 }
 
 export function demoDashboard(skewed = false, days = DEMO_DAYS): Dashboard {
-  const providers: Array<[string, string, number]> = skewed
-    ? [
-        ["opencode", "demo-model-a", 2_200_000],
-        ["nvidia", "demo-model-c", 140_000],
-        ["ollama", "demo-model-b", 45_000],
-      ]
-    : [
-        ["opencode", "demo-model-a", 1_200_000],
-        ["ollama", "demo-model-b", 800_000],
-        ["nvidia", "demo-model-c", 400_000],
-      ];
-  const totalDays = Math.max(1, Math.min(365, Math.round(days) || DEMO_DAYS));
+  // days=0 means all-time: use a long skewed dataset instead of falling
+  // back to DEMO_DAYS (0 is falsy, so `||` would mask it).
+  const allTime = days === 0;
+  const providers: Array<[string, string, number]> =
+    skewed || allTime
+      ? [
+          ["opencode", "demo-model-a", 2_200_000],
+          ["ollama", "demo-model-b", 800_000],
+          ["nvidia", "demo-model-c", 400_000],
+          ["anthropic", "demo-model-d", 120_000],
+          ["google", "demo-model-e", 60_000],
+          ["groq", "demo-model-f", 30_000],
+          ["mistral", "demo-model-g", 15_000],
+          ["openrouter", "demo-model-h", 8_000],
+          ["lmstudio", "demo-model-i", 4_000],
+        ]
+      : [
+          ["opencode", "demo-model-a", 1_200_000],
+          ["ollama", "demo-model-b", 800_000],
+          ["nvidia", "demo-model-c", 400_000],
+        ];
+  const totalDays = allTime
+    ? DEMO_ALL_DAYS
+    : Math.max(1, Math.min(365, Math.round(days) || DEMO_DAYS));
   const daily: DayStat[] = [];
   const models = providers.map(([provider, model, base], pi) => {
     let input = 0;

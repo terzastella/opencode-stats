@@ -83,7 +83,6 @@ const it = {
   "settings.name": "Nome",
   "settings.desc": "Descrizione",
   "settings.close": "Chiudi",
-  "settings.photoError": "File non valido: scegli un'immagine sotto 10 MB.",
   "settings.photoTooBig": "Immagine oltre 10 MB: scegli un file più leggero.",
   "settings.photoType": "Formato non supportato: usa JPG, PNG, GIF o WebP.",
   "settings.photoDecode": "Lettura immagine fallita: prova con un altro file.",
@@ -99,6 +98,9 @@ const it = {
   "activity.howWeCount": "Token totali giornalieri",
   "activity.loadError": "Caricamento attività fallito.",
   "activity.loading": "Caricamento attività…",
+  "activity.mon": "Lun",
+  "activity.wed": "Mer",
+  "activity.fri": "Ven",
 };
 
 export type DictKey = keyof typeof it;
@@ -186,7 +188,6 @@ const en: Record<DictKey, string> = {
   "settings.name": "Name",
   "settings.desc": "Description",
   "settings.close": "Close",
-  "settings.photoError": "Invalid file: choose an image under 10 MB.",
   "settings.photoTooBig": "Image over 10 MB: choose a lighter file.",
   "settings.photoType": "Unsupported format: use JPG, PNG, GIF or WebP.",
   "settings.photoDecode": "Failed to read image: try another file.",
@@ -202,6 +203,9 @@ const en: Record<DictKey, string> = {
   "activity.howWeCount": "Total daily tokens",
   "activity.loadError": "Failed to load activity.",
   "activity.loading": "Loading activity…",
+  "activity.mon": "Mon",
+  "activity.wed": "Wed",
+  "activity.fri": "Fri",
 };
 
 export const STRINGS: Record<Lang, Record<DictKey, string>> = { it, en };

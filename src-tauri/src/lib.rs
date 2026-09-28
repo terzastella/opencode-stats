@@ -2,13 +2,19 @@
 mod stats;
 
 use stats::{
-    DashboardData, DbInfo, SelectionStats, SessionRow, dashboard_inner, db_info_inner,
-    selection_stats_inner, session_list_inner,
+    DashboardData, DbInfo, SelectionStats, SessionRow, Watermark, dashboard_inner, db_info_inner,
+    selection_stats_inner, session_list_inner, watermark_inner,
 };
 
 #[tauri::command]
 fn db_info() -> Result<DbInfo, String> {
     db_info_inner()
+}
+
+/// Cheap freshness probe for the auto-refresh tick (no JSON extraction).
+#[tauri::command]
+fn watermark() -> Result<Watermark, String> {
+    watermark_inner()
 }
 
 #[tauri::command]
@@ -36,7 +42,8 @@ pub fn run() {
             db_info,
             session_list,
             dashboard,
-            selection_stats
+            selection_stats,
+            watermark
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
