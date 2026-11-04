@@ -863,10 +863,6 @@ input:focus-visible {
   white-space: nowrap;
 }
 
-.kpi-part + .kpi-part::before {
-  content: " · ";
-}
-
 /* ——— Boot loader ——— */
 .boot {
   min-height: 100vh;

@@ -1371,9 +1371,9 @@ export default function App() {
           <span className="kpi-sub kpi-sub-wrap">
             {totals ? (
               <>
-                <span className="kpi-part">{S["kpi.inputShort"]} {fmtCompact(totals.input)}</span>
-                <span className="kpi-part">{S["kpi.outputShort"]} {fmtCompact(totals.output)}</span>
-                <span className="kpi-part">{S["kpi.reasoningShort"]} {fmtCompact(totals.reasoning)}</span>
+                <span className="kpi-part">{S["kpi.inputShort"]} {fmtCompact(totals.input)}</span>{" · "}
+                <span className="kpi-part">{S["kpi.outputShort"]} {fmtCompact(totals.output)}</span>{" · "}
+                <span className="kpi-part">{S["kpi.reasoningShort"]} {fmtCompact(totals.reasoning)}</span>{" · "}
                 <span className="kpi-part">{S["kpi.cacheRead"]} {fmtCompact(totals.cacheRead)}</span>
               </>
             ) : ""}
