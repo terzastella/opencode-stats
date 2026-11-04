@@ -468,6 +468,7 @@ export default function App() {
         const key = `all:${wm.maxMessageMs}:${wm.maxSessionMs}:${wm.messages}:${wm.sessions}`;
         if (key === watermarkRef.current) {
           setLoading(false);
+          setError(null);
           setDiagMs(Math.round(performance.now() - t0));
           setUpdatedMs(Date.now());
           return;
