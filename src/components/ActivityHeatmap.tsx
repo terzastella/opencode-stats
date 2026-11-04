@@ -37,10 +37,14 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
     let input = 0;
     let output = 0;
     let reasoning = 0;
+    let cacheRead = 0;
+    let cacheWrite = 0;
     for (const b of breakdown.values()) {
       input += b.input;
       output += b.output;
       reasoning += b.reasoning;
+      cacheRead += b.cacheRead;
+      cacheWrite += b.cacheWrite;
     }
     return {
       weeks,
@@ -51,6 +55,8 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
       input,
       output,
       reasoning,
+      cacheRead,
+      cacheWrite,
       first: days[0],
       last: days[days.length - 1],
       active: sortedActiveValues(totals),
@@ -123,7 +129,7 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
     );
   }
 
-  const { weeks, total, input, output, reasoning, first, last, active } = data;
+  const { weeks, total, input, output, reasoning, cacheRead, cacheWrite, first, last, active } = data;
 
   if (total <= 0) {
     return (
@@ -148,7 +154,7 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
       </div>
       <div className="heatmap-how">
         {S["series.input"]} {fmtCompact(input)} · {S["series.output"]} {fmtCompact(output)} ·{" "}
-        {S["series.reasoning"]} {fmtCompact(reasoning)}
+        {S["series.reasoning"]} {fmtCompact(reasoning)} · {S["series.cache"]} {fmtCompact(cacheRead + cacheWrite)}
       </div>
       <div className="heatmap-scroll" onScroll={() => setHover(null)}>
         <div className="heatmap-months" aria-hidden="true">
@@ -214,8 +220,13 @@ export default function ActivityHeatmap({ rows, loading, loadError, onRetry, lan
             <span>{S["series.reasoning"]}</span>
             <strong>{fmtCompact(hoverData.reasoning)}</strong>
           </div>
+          <div className="heat-tip-row">
+            <span className="heat-dot cache" />
+            <span>{S["series.cache"]}</span>
+            <strong>{fmtCompact(hoverData.cacheRead + hoverData.cacheWrite)}</strong>
+          </div>
           <div className="heat-tip-total">
-            <span>{S["kpi.totalGenerated"]}</span>
+            <span>{S["kpi.totalTokens"]}</span>
             <strong>{fmtCompact(hoverData.total)}</strong>
           </div>
         </div>

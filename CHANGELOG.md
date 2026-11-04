@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-11-03
+
+### Added
+- Rust contract tests for both storage layouts: the same logical history in
+  v1 and v2 shapes must produce identical metrics.
+
+### Changed
+- Performance on large databases: in-memory SQLite temp store plus a fixed
+  64 MiB page cache bring the all-time dashboard scan from ~11 s to ~4 s;
+  the session list now parses message JSON only for the sessions it returns
+  (~9 s -> ~0.6 s on a live 10.5 GB v2 DB). Rows are unchanged (parity test
+  `session_list_two_phase_matches_reference`).
+- Heavy scans get a 60 s invoke timeout (light probes stay at 15 s): a slow
+  cold scan no longer flashes an error and queues a retry while the previous
+  scan is still running.
+- Slim theme-matched scrollbars everywhere (window, tables, panels):
+  transparent track, floating pill thumb that brightens on hover.
+- "Total tokens" KPI now sums input, output, reasoning and cache read/write,
+  matching `opencode stats` (cache read is ~95% of real usage and was
+  previously only visible under the cost card); the token chart stacks the
+  same four components, the Top models table shows a per-model token total
+  (sorted by it, breakdown in the cell tooltip) and the profile heatmap
+  counts cache in its daily totals, header and hover breakdown.
+
+### Fixed
+- UI freeze on large databases: in Tauri v2 non-async commands run on the
+  main thread, so a multi-second scan froze the window (Windows logged it as
+  "Application Hang"). All commands now execute on the blocking thread pool.
+- Auto-refresh ticks pause while the window is hidden.
+- OpenCode v2 storage support: sessions/messages are read from
+  `session_v2`/`session_message` when present, with automatic fallback to the
+  legacy `session`/`message` tables for older databases.
+- v2 message decoding: assistant role from the `type` column, provider/model
+  from `$.model.providerID`/`$.model.id`. On v2 databases the dashboard
+  previously froze at the last pre-migration date.
+
 ## [0.1.12] - 2026-09-28
 
 ### Added

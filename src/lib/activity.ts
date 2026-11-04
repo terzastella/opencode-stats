@@ -35,7 +35,7 @@ export function lastNDays(n: number): string[] {
   return out;
 }
 
-/** Sum input+output+reasoning tokens per day, filling missing days with 0. */
+/** Sum input+output+reasoning+cache tokens per day, filling missing days with 0. */
 export function aggregateTokensByDay(
   rows: DayStat[],
   groupPass: GroupPass,
@@ -52,16 +52,18 @@ export interface DayBreakdown {
   input: number;
   output: number;
   reasoning: number;
+  cacheRead: number;
+  cacheWrite: number;
   total: number;
 }
 
-/** Per-day metric split (input/output/reasoning + total), zeros prefilled. */
+/** Per-day metric split (input/output/reasoning/cache + total), zeros prefilled. */
 export function aggregateDayBreakdown(
   rows: DayStat[],
   groupPass: GroupPass,
   days: string[],
 ): Map<string, DayBreakdown> {
-  const zero = (): DayBreakdown => ({ input: 0, output: 0, reasoning: 0, total: 0 });
+  const zero = (): DayBreakdown => ({ input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, total: 0 });
   const map = new Map<string, DayBreakdown>(days.map((d) => [d, zero()]));
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
   for (const r of rows) {
@@ -71,7 +73,9 @@ export function aggregateDayBreakdown(
     b.input += num(r.input);
     b.output += num(r.output);
     b.reasoning += num(r.reasoning);
-    b.total = b.input + b.output + b.reasoning;
+    b.cacheRead += num(r.cacheRead);
+    b.cacheWrite += num(r.cacheWrite);
+    b.total = b.input + b.output + b.reasoning + b.cacheRead + b.cacheWrite;
   }
   return map;
 }

@@ -6,33 +6,53 @@ use stats::{
     selection_stats_inner, session_list_inner, watermark_inner,
 };
 
+// In Tauri v2, non-async commands run on the main thread, where a heavy SQL
+// scan (a v2 dashboard scan parses ~1 GB of message JSON) blocks the window
+// message loop — Windows reports the frozen window as "Application Hang".
+// Every command therefore runs its synchronous stats code on the blocking
+// thread pool, so scans never touch the UI thread.
+
 #[tauri::command]
-fn db_info() -> Result<DbInfo, String> {
-    db_info_inner()
+async fn db_info() -> Result<DbInfo, String> {
+    tauri::async_runtime::spawn_blocking(db_info_inner)
+        .await
+        .map_err(|e| format!("db_info task failed: {e}"))?
 }
 
 /// Cheap freshness probe for the auto-refresh tick (no JSON extraction).
 #[tauri::command]
-fn watermark() -> Result<Watermark, String> {
-    watermark_inner()
+async fn watermark() -> Result<Watermark, String> {
+    tauri::async_runtime::spawn_blocking(watermark_inner)
+        .await
+        .map_err(|e| format!("watermark task failed: {e}"))?
 }
 
 #[tauri::command]
-fn session_list(days: Option<u32>, limit: Option<u32>) -> Result<Vec<SessionRow>, String> {
-    session_list_inner(days.unwrap_or(30).clamp(0, 365), limit.unwrap_or(100))
+async fn session_list(days: Option<u32>, limit: Option<u32>) -> Result<Vec<SessionRow>, String> {
+    let days = days.unwrap_or(30).clamp(0, 365);
+    let limit = limit.unwrap_or(100);
+    tauri::async_runtime::spawn_blocking(move || session_list_inner(days, limit))
+        .await
+        .map_err(|e| format!("session_list task failed: {e}"))?
 }
 
 /// Single-scan dashboard payload (overview + daily + models in one go).
 /// days == 0 means all-time (no cutoff).
 #[tauri::command]
-fn dashboard(days: Option<u32>) -> Result<DashboardData, String> {
-    dashboard_inner(days.unwrap_or(30).clamp(0, 365))
+async fn dashboard(days: Option<u32>) -> Result<DashboardData, String> {
+    let days = days.unwrap_or(30).clamp(0, 365);
+    tauri::async_runtime::spawn_blocking(move || dashboard_inner(days))
+        .await
+        .map_err(|e| format!("dashboard task failed: {e}"))?
 }
 
 /// Selection honesty data, called only when a provider filter is active.
 #[tauri::command]
-fn selection_stats(days: Option<u32>) -> Result<SelectionStats, String> {
-    selection_stats_inner(days.unwrap_or(30).clamp(0, 365))
+async fn selection_stats(days: Option<u32>) -> Result<SelectionStats, String> {
+    let days = days.unwrap_or(30).clamp(0, 365);
+    tauri::async_runtime::spawn_blocking(move || selection_stats_inner(days))
+        .await
+        .map_err(|e| format!("selection_stats task failed: {e}"))?
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

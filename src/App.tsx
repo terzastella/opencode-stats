@@ -529,10 +529,13 @@ export default function App() {
   useEffect(() => {
     if (bootMountedRef.current) return;
     bootMountedRef.current = true;
+    // Must exceed the heavy invoke timeout (60 s in api.ts): a scan may
+    // legitimately take that long before it errors, and this banner is only
+    // for a truly wedged backend.
     const safety = window.setTimeout(() => {
       setError((prev) => prev ?? S["err.slowStart"]);
       setBooted(true);
-    }, 25000);
+    }, 70000);
     void refresh({ boot: true }).finally(() => {
       window.clearTimeout(safety);
       setBooted(true);
@@ -547,7 +550,13 @@ export default function App() {
 
   useEffect(() => {
     if (!live) return;
-    const t = window.setInterval(() => void refresh(), REFRESH_MS);
+    // Background ticks pause while the window is hidden: on a live v2 DB
+    // every OpenCode write moves the watermark, and rescanning a hidden
+    // window only burns disk I/O. focus/visibilitychange below re-sync on
+    // return.
+    const t = window.setInterval(() => {
+      if (!document.hidden) void refresh();
+    }, REFRESH_MS);
     const onFocus = () => void refresh();
     const onVis = () => {
       if (document.visibilityState === "visible") void refresh();
@@ -719,7 +728,7 @@ export default function App() {
     const get = (k: string): Bucket => {
       let b = map.get(k);
       if (!b) {
-        b = { key: k, label: labelFor(k), input: 0, output: 0, reasoning: 0, cost: 0, messages: 0 };
+        b = { key: k, label: labelFor(k), input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, cost: 0, messages: 0 };
         map.set(k, b);
       }
       return b;
@@ -735,6 +744,8 @@ export default function App() {
       b.input += r.input;
       b.output += r.output;
       b.reasoning += r.reasoning;
+      b.cacheRead += r.cacheRead;
+      b.cacheWrite += r.cacheWrite;
       b.cost += r.cost;
       b.messages += r.messages;
     };
@@ -799,8 +810,8 @@ export default function App() {
       if (!key) continue;
       const i = idx.get(key);
       if (i === undefined) continue;
-      // Same total as `buckets`/heatmap (input+output+reasoning).
-      arr[i] += r.input + r.output + r.reasoning;
+      // Same token total as `buckets` (input+output+reasoning+cache).
+      arr[i] += r.input + r.output + r.reasoning + r.cacheRead + r.cacheWrite;
     }
     return groups.map((g) => ({ group: g, values: data.get(g)! }));
   }, [daily, range, buckets, filters.selected, filters.groups]);
@@ -827,10 +838,13 @@ export default function App() {
     key: string;
     model: string;
     group: string;
+    tokens: number;
     messages: number;
     input: number;
     output: number;
     reasoning: number;
+    cacheRead: number;
+    cacheWrite: number;
     cost: number;
   }
 
@@ -843,14 +857,17 @@ export default function App() {
         key: `${m.provider}/${m.model}`,
         model: m.model,
         group: g,
+        tokens: m.input + m.output + m.reasoning + m.cacheRead + m.cacheWrite,
         messages: m.messages,
         input: m.input,
         output: m.output,
         reasoning: m.reasoning,
+        cacheRead: m.cacheRead,
+        cacheWrite: m.cacheWrite,
         cost: m.cost,
       });
     }
-    return rows.sort((a, b) => b.input - a.input).slice(0, 12);
+    return rows.sort((a, b) => b.tokens - a.tokens).slice(0, 12);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [models, filters.selected]);
 
@@ -936,6 +953,9 @@ export default function App() {
         },
         legend: {
           data: splitGroups.map((s) => s.group),
+          top: 0,
+          left: 0,
+          itemGap: 14,
           textStyle: { color: faint, fontSize: 11 },
         },
         grid: { left: 52, right: 14, top: 34, bottom: 26 },
@@ -966,7 +986,7 @@ export default function App() {
         textStyle: { color: fg, fontSize: 12 },
         valueFormatter: (value: number | string) => fmtCompact(Number(value)),
       },
-      legend: { data: [S["series.input"], S["series.output"], S["series.reasoning"]], textStyle: { color: faint, fontSize: 11 } },
+      legend: { data: [S["series.input"], S["series.output"], S["series.reasoning"], S["series.cache"]], top: 0, left: 0, itemGap: 14, textStyle: { color: faint, fontSize: 11 } },
       grid: { left: 52, right: 14, top: 34, bottom: 26 },
       xAxis: {
         type: "category",
@@ -984,41 +1004,48 @@ export default function App() {
         {
           name: S["series.input"],
           type: "line",
+          stack: "tokens",
           smooth: true,
           showSymbol: false,
-          lineStyle: { width: 2 },
-          areaStyle: {
-            opacity: 0.9,
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: dark ? "rgba(250,250,250,0.22)" : "rgba(9,9,11,0.16)" },
-              { offset: 1, color: "rgba(0,0,0,0)" },
-            ]),
-          },
+          lineStyle: { width: 1.5, color: primary },
+          itemStyle: { color: primary },
+          areaStyle: { opacity: 1, color: dark ? "rgba(250,250,250,0.30)" : "rgba(9,9,11,0.24)" },
           data: buckets.map((b) => b.input),
         },
         {
           name: S["series.output"],
           type: "line",
+          stack: "tokens",
           smooth: true,
           showSymbol: false,
-          lineStyle: { width: 1.5, type: "dashed" },
-          areaStyle: {
-            opacity: 0.9,
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: dark ? "rgba(142,142,150,0.20)" : "rgba(99,99,107,0.14)" },
-              { offset: 1, color: "rgba(0,0,0,0)" },
-            ]),
-          },
+          lineStyle: { width: 1.5, color: secondary },
+          itemStyle: { color: secondary },
+          areaStyle: { opacity: 1, color: dark ? "rgba(142,142,150,0.32)" : "rgba(99,99,107,0.24)" },
           data: buckets.map((b) => b.output),
         },
         {
           name: S["series.reasoning"],
           type: "line",
+          stack: "tokens",
           smooth: true,
           showSymbol: false,
-          lineStyle: { width: 1.5, type: "dotted", color: dark ? "#b79bff" : "#7c3aed" },
+          lineStyle: { width: 1.5, color: dark ? "#b79bff" : "#7c3aed" },
           itemStyle: { color: dark ? "#b79bff" : "#7c3aed" },
+          areaStyle: { opacity: 1, color: dark ? "rgba(183,155,255,0.26)" : "rgba(124,58,237,0.20)" },
           data: buckets.map((b) => b.reasoning),
+        },
+        {
+          // Cache read dominates the total (95% on real usage): stacked last
+          // so the sum matches the "Total tokens" KPI and `opencode stats`.
+          name: S["series.cache"],
+          type: "line",
+          stack: "tokens",
+          smooth: true,
+          showSymbol: false,
+          lineStyle: { width: 1.5, color: dark ? "#2dd4bf" : "#0d9488" },
+          itemStyle: { color: dark ? "#2dd4bf" : "#0d9488" },
+          areaStyle: { opacity: 1, color: dark ? "rgba(45,212,191,0.20)" : "rgba(13,148,136,0.16)" },
+          data: buckets.map((b) => b.cacheRead + b.cacheWrite),
         },
       ],
     };
@@ -1335,9 +1362,17 @@ export default function App() {
 
       <section className="kpis">
         <div className="kpi">
-          <span className="kpi-label">{S["kpi.input"]}</span>
-          <strong className="kpi-value">{totals ? fmtCompact(totals.input) : "—"}</strong>
-          <span className="kpi-sub">{totals ? fmtInt(totals.input, lang) : ""}</span>
+          <span className="kpi-label">{S["kpi.totalTokens"]}</span>
+          <strong className="kpi-value">
+            {totals
+              ? fmtCompact(totals.input + totals.output + totals.reasoning + totals.cacheRead + totals.cacheWrite)
+              : "—"}
+          </strong>
+          <span className="kpi-sub kpi-sub-wrap">
+            {totals
+              ? `${S["kpi.inputShort"]} ${fmtCompact(totals.input)} · ${S["kpi.outputShort"]} ${fmtCompact(totals.output)} · ${S["kpi.reasoningShort"]} ${fmtCompact(totals.reasoning)} · ${S["kpi.cacheRead"]} ${fmtCompact(totals.cacheRead)}`
+              : ""}
+          </span>
         </div>
         <div className="kpi">
           <span className="kpi-label">{S["kpi.output"]}</span>
@@ -1399,6 +1434,7 @@ export default function App() {
                 <tr>
                   <th>{S["th.model"]}</th>
                   <th>{S["th.provider"]}</th>
+                  <th className="num">{S["th.tokens"]}</th>
                   <th className="num">{S["th.msgs"]}</th>
                   <th className="num">{S["th.input"]}</th>
                   <th className="num">{S["th.output"]}</th>
@@ -1411,6 +1447,10 @@ export default function App() {
                   <tr key={m.key}>
                     <td className="mono">{m.model}</td>
                     <td><span className="badge"><ProviderMark group={m.group} theme={themeName} />{m.group}</span></td>
+                    <td
+                      className="num"
+                      title={`${S["series.input"]} ${fmtCompact(m.input)} · ${S["series.output"]} ${fmtCompact(m.output)} · ${S["series.reasoning"]} ${fmtCompact(m.reasoning)} · ${S["series.cache"]} ${fmtCompact(m.cacheRead + m.cacheWrite)}`}
+                    >{fmtCompact(m.tokens)}</td>
                     <td className="num">{fmtInt(m.messages, lang)}</td>
                     <td className="num">{fmtCompact(m.input)}</td>
                     <td className="num">{fmtCompact(m.output)}</td>
@@ -1419,7 +1459,7 @@ export default function App() {
                   </tr>
                 ))}
                 {!tableRows.length && (
-                  <tr><td colSpan={7} className="empty">{S["empty.models"]}</td></tr>
+                  <tr><td colSpan={8} className="empty">{S["empty.models"]}</td></tr>
                 )}
               </tbody>
             </table>

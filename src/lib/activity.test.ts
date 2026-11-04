@@ -12,7 +12,15 @@ import {
 } from "./activity";
 import type { DayStat } from "./types";
 
-function row(day: string, provider: string, input: number, output: number, reasoning: number): DayStat {
+function row(
+  day: string,
+  provider: string,
+  input: number,
+  output: number,
+  reasoning: number,
+  cacheRead = 0,
+  cacheWrite = 0,
+): DayStat {
   return {
     day,
     provider,
@@ -21,8 +29,8 @@ function row(day: string, provider: string, input: number, output: number, reaso
     input,
     output,
     reasoning,
-    cacheRead: 0,
-    cacheWrite: 0,
+    cacheRead,
+    cacheWrite,
     cost: 0,
   };
 }
@@ -56,7 +64,7 @@ describe("granularityForSpan", () => {
 
 describe("aggregateTokensByDay", () => {
   const days = ["2026-09-25", "2026-09-26", "2026-09-27"];
-  it("sums input+output+reasoning and fills missing days", () => {
+  it("sums input+output+reasoning+cache and fills missing days", () => {
     const rows = [
       row("2026-09-27", "opencode/m", 100, 50, 25),
       row("2026-09-27", "ollama/m", 10, 5, 0),
@@ -64,6 +72,11 @@ describe("aggregateTokensByDay", () => {
     const m = aggregateTokensByDay(rows, () => true, days);
     expect(m.get("2026-09-27")).toBe(190);
     expect(m.get("2026-09-26")).toBe(0);
+  });
+  it("includes cache read/write in the daily total", () => {
+    const rows = [row("2026-09-27", "opencode/m", 100, 50, 25, 1000, 10)];
+    const m = aggregateTokensByDay(rows, () => true, days);
+    expect(m.get("2026-09-27")).toBe(1185);
   });
   it("respects the provider filter", () => {
     const rows = [row("2026-09-27", "ollama/m", 10, 5, 0)];
@@ -80,13 +93,18 @@ describe("aggregateDayBreakdown", () => {
       row("2026-09-27", "ollama/m", 10, 5, 0),
     ];
     const m = aggregateDayBreakdown(rows, () => true, days);
-    expect(m.get("2026-09-27")).toEqual({ input: 110, output: 55, reasoning: 25, total: 190 });
-    expect(m.get("2026-09-26")).toEqual({ input: 0, output: 0, reasoning: 0, total: 0 });
+    expect(m.get("2026-09-27")).toEqual({ input: 110, output: 55, reasoning: 25, cacheRead: 0, cacheWrite: 0, total: 190 });
+    expect(m.get("2026-09-26")).toEqual({ input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, total: 0 });
   });
-  it("header math holds: input+output+reasoning === total", () => {
+  it("keeps cache separate and in the total", () => {
+    const rows = [row("2026-09-27", "opencode/m", 7, 3, 2, 900, 10)];
+    const b = aggregateDayBreakdown(rows, () => true, days).get("2026-09-27")!;
+    expect(b).toEqual({ input: 7, output: 3, reasoning: 2, cacheRead: 900, cacheWrite: 10, total: 922 });
+  });
+  it("header math holds: input+output+reasoning+cache === total", () => {
     const rows = [row("2026-09-27", "opencode/m", 7, 3, 2)];
     const b = aggregateDayBreakdown(rows, () => true, days).get("2026-09-27")!;
-    expect(b.input + b.output + b.reasoning).toBe(b.total);
+    expect(b.input + b.output + b.reasoning + b.cacheRead + b.cacheWrite).toBe(b.total);
   });
 });
 

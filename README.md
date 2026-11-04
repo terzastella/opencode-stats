@@ -45,6 +45,9 @@ used at least once (the app reads its local database).
 > The app is not code-signed: Windows shows "unknown publisher" — that's expected.
 > On SmartScreen: "More info → Run anyway".
 
+**v0.1.13** — OpenCode v2 storage support (the app kept reading the old
+tables after OpenCode's DB migration); no more UI freezes on large DBs
+(scans off the UI thread); much faster scans.
 **v0.1.12** — verifiable heatmap (per-day hover stats), 32 GiB DB cap,
 all-time anti-rescan, react-dom alignment fix.
 **v0.1.11** — first release since v0.1.7: reasoning tokens, true all-time,
@@ -86,8 +89,11 @@ release build scrubbed of machine paths.
 It reads `~/.local/share/opencode/opencode.db` read-only (`OPENCODE_DB_PATH` override —
 on Windows: `%USERPROFILE%\.local\share\opencode\opencode.db`):
 
-- `message.data` (JSON: `role/providerID/modelID/tokens/cost`) → KPIs, daily/weekly, per-provider split
-- `session` (`cost/tokens_*` aggregates) → recent sessions list
+- messages (`message.data` on OpenCode v1, `session_message.data` on v2 — JSON
+  `tokens/cost`, provider and model) → KPIs, daily/weekly, per-provider split
+- sessions (`session` / `session_v2` tables) → recent sessions list
+
+OpenCode v1 and v2 storage layouts are both supported and detected automatically.
 
 Providers used through OpenCode (`opencode/*`, `ollama/*`, `lmstudio/*`, `llama.cpp/*`, …)
 are filterable with **Combined / Split** views and stable per-provider colors.
@@ -114,7 +120,7 @@ Without Tauri (`npm run dev`) the UI shows a warning because Rust invokes are un
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.12_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.13_x64-setup.exe (+ .msi)
 ```
 
 For published releases, build with `scripts/build-release.ps1` instead: same output,
@@ -183,6 +189,9 @@ già usato almeno una volta (l'app legge il suo database locale).
 > L'app non è firmata digitalmente: Windows mostra "autore sconosciuto" — è normale.
 > Su SmartScreen: "Ulteriori informazioni → Esegui comunque".
 
+**v0.1.13** — supporto storage OpenCode v2 (l'app continuava a leggere le
+vecchie tabelle dopo la migrazione del DB); niente più freeze UI su DB
+grandi (scansioni fuori dal thread UI); scansioni molto più veloci.
 **v0.1.12** — heatmap verificabile (statistiche al passaggio mouse), cap DB
 32 GiB, anti-rescan all-time, fix allineamento react-dom.
 **v0.1.11** — prima release dalla v0.1.7: reasoning token, vero all-time,
@@ -225,8 +234,11 @@ installer; build release ripulita dai percorsi macchina.
 Legge in read-only `~/.local/share/opencode/opencode.db` (override con `OPENCODE_DB_PATH` —
 su Windows: `%USERPROFILE%\.local\share\opencode\opencode.db`):
 
-- `message.data` (JSON: `role/providerID/modelID/tokens/cost`) → KPI, daily/weekly, split per provider
-- `session` (aggregati `cost/tokens_*`) → lista sessioni recenti
+- messaggi (`message.data` su OpenCode v1, `session_message.data` su v2 — JSON
+  `tokens/cost`, provider e modello) → KPI, daily/weekly, split per provider
+- sessioni (tabelle `session` / `session_v2`) → lista sessioni recenti
+
+Gli storage OpenCode v1 e v2 sono entrambi supportati e rilevati automaticamente.
 
 I provider usati via OpenCode (`opencode/*`, `ollama/*`, `lmstudio/*`, `llama.cpp/*`, …)
 sono filtrabili con vista **Sommati / Singoli** e colori stabili per provider.
@@ -253,7 +265,7 @@ Senza Tauri (`npm run dev`) l'UI mostra un avviso perché gli invoke Rust non so
 ```powershell
 npm run tauri build
 # -> src-tauri/target/release/opencode-stats.exe
-# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.12_x64-setup.exe (+ .msi)
+# -> src-tauri/target/release/bundle/nsis/OpenCode Stats_0.1.13_x64-setup.exe (+ .msi)
 ```
 
 Per le release pubblicate, compila invece con `scripts/build-release.ps1`: stesso output,

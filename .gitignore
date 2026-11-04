@@ -28,6 +28,9 @@ target/
 *.sig
 *.asc
 
+# Local AI-tooling state (Serena memories/config, machine-specific)
+.serena/
+
 # OS
 Thumbs.db
 

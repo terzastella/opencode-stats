@@ -98,6 +98,8 @@ export interface Bucket {
   input: number;
   output: number;
   reasoning: number;
+  cacheRead: number;
+  cacheWrite: number;
   cost: number;
   messages: number;
 }
