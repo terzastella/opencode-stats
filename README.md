@@ -48,20 +48,28 @@ used at least once (the app reads its local database).
 **v0.1.13** — OpenCode v2 storage support (the app kept reading the old
 tables after OpenCode's DB migration); no more UI freezes on large DBs
 (scans off the UI thread); much faster scans.
+
 **v0.1.12** — verifiable heatmap (per-day hover stats), 32 GiB DB cap,
 all-time anti-rescan, react-dom alignment fix.
+
 **v0.1.11** — first release since v0.1.7: reasoning tokens, true all-time,
 per-period sessions, provider attribution, tests; green CI.
+
 **v0.1.10** — reasoning tokens, true all-time range, per-period sessions, real
 provider attribution, unit tests (vitest + cargo).
+
 **v0.1.9** — security hardening: ECharts stored-XSS guard, stricter CSP, photo
 allowlist, DB path/size checks; CI least-privilege + Dependabot.
+
 **v0.1.8** — fixed profile photo upload (valid images wrongly rejected as "over
 10 MB"); new GitHub-style token activity heatmap in profile settings.
+
 **v0.1.7** — Content Security Policy enabled; TypeScript pinned to exact 6.0.3;
 backend call timeouts; automated CI (frontend + Tauri builds).
+
 **v0.1.6** — fixed provider-filter crash (backend/frontend field naming
 mismatch); selection stats hardened against shape drift.
+
 **v0.1.5** — "OpenCode is not installed" screen with IT/EN switch; readable
 sub-dollar cost axis; Terzastella publisher + custom installer icons;
 release build scrubbed of machine paths.
@@ -192,21 +200,29 @@ già usato almeno una volta (l'app legge il suo database locale).
 **v0.1.13** — supporto storage OpenCode v2 (l'app continuava a leggere le
 vecchie tabelle dopo la migrazione del DB); niente più freeze UI su DB
 grandi (scansioni fuori dal thread UI); scansioni molto più veloci.
+
 **v0.1.12** — heatmap verificabile (statistiche al passaggio mouse), cap DB
 32 GiB, anti-rescan all-time, fix allineamento react-dom.
+
 **v0.1.11** — prima release dalla v0.1.7: reasoning token, vero all-time,
 sessioni per-periodo, attribuzione provider, test; CI verde.
+
 **v0.1.10** — reasoning token, vero all-time, sessioni per-periodo,
 attribuzione provider reale, unit test (vitest + cargo).
+
 **v0.1.9** — hardening sicurezza: anti-XSS nei grafici, CSP rafforzata,
 allowlist foto, controlli path/dimensione DB; CI least-privilege + Dependabot.
+
 **v0.1.8** — corretto il caricamento della foto profilo (immagini valide
 scartate come "oltre 10 MB"); nuova heatmap stile GitHub dei token nelle
 impostazioni profilo.
+
 **v0.1.7** — Content Security Policy attivata; TypeScript pinnato alla 6.0.3;
 timeout sulle chiamate backend; CI automatica (build frontend + Tauri).
+
 **v0.1.6** — corretto il crash alla selezione di un provider (nomi dei campi
 disallineati tra backend e frontend); statistiche di selezione più robuste.
+
 **v0.1.5** — schermata "OpenCode non installato" con selettore IT/EN; tacche
 leggibili sull'asse dei costi sotto il dollaro; publisher Terzastella + icone
 installer; build release ripulita dai percorsi macchina.

@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v2 message decoding: assistant role from the `type` column, provider/model
   from `$.model.providerID`/`$.model.id`. On v2 databases the dashboard
   previously froze at the last pre-migration date.
+- A transient read error no longer leaves a permanent banner after the next
+  successful refresh when the data itself is unchanged.
+- Provider names are HTML-escaped in every chart tooltip, including the
+  "Input per provider" bars.
 
 ## [0.1.12] - 2026-09-28
 

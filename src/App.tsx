@@ -504,8 +504,8 @@ export default function App() {
         setDaily(dash.daily);
         setModels(dash.models);
         setSessions(se);
-        setError(null);
       }
+      setError(null);
       loadedOnceRef.current = true;
       setLoading(false);
       setDiagMs(Math.round(performance.now() - t0));
@@ -1100,7 +1100,24 @@ export default function App() {
         backgroundColor: tipBg,
         borderColor: tipBorder,
         textStyle: { color: fg, fontSize: 12 },
-        valueFormatter: (value: number | string) => fmtCompact(Number(value)),
+        // Provider groups come from the untrusted DB: axis tooltips render
+        // HTML, so escape the category name and the series label.
+        formatter: (params: unknown) => {
+          const list: unknown[] = Array.isArray(params) ? params : [params];
+          const first = (typeof list[0] === "object" && list[0] !== null ? list[0] : {}) as {
+            axisValue?: unknown;
+          };
+          const lines = list.map((p) => {
+            const o = (typeof p === "object" && p !== null ? p : {}) as {
+              marker?: unknown;
+              seriesName?: unknown;
+              value?: unknown;
+            };
+            const marker = typeof o.marker === "string" ? o.marker : "";
+            return `${marker} ${escapeHtml(o.seriesName ?? "")} ${fmtCompact(Number(o.value))}`;
+          });
+          return [escapeHtml(first.axisValue ?? ""), ...lines].join("<br/>");
+        },
       },
       grid: { left: 8, right: 56, top: 8, bottom: 8, containLabel: true },
       xAxis: {
