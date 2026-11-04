@@ -858,6 +858,15 @@ input:focus-visible {
   line-height: 1.35;
 }
 
+/* Keep "cache read 20.7B" together when the breakdown wraps. */
+.kpi-part {
+  white-space: nowrap;
+}
+
+.kpi-part + .kpi-part::before {
+  content: " · ";
+}
+
 /* ——— Boot loader ——— */
 .boot {
   min-height: 100vh;

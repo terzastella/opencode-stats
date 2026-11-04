@@ -24,7 +24,7 @@ Lightweight desktop dashboard for your OpenCode usage — tokens, costs, charts.
 
 | | |
 |---|---|
-| 📊 | Input/output tokens, cost, cache — daily, weekly, all-time |
+| 📊 | Total tokens (input, output, reasoning, cache) matching `opencode stats` — daily, weekly, all-time |
 | 📈 | Line, bar & donut charts, top models, recent sessions, reasoning tokens |
 | 🎛️ | Per-provider filters, Combined / Split views, brand icons |
 | 👤 | Customizable profile (photo, name, bio), activity heatmap, light/dark theme |
@@ -168,7 +168,7 @@ grafici e tabelle, profilo personalizzabile, interfaccia EN/IT.
 
 | | |
 |---|---|
-| 📊 | Token input/output, costi, cache — giornaliero, settimanale, tutto |
+| 📊 | Token totali (input, output, reasoning, cache) come `opencode stats` — giornaliero, settimanale, tutto |
 | 📈 | Grafici linee, barre e torta, top modelli, sessioni recenti, reasoning |
 | 🎛️ | Filtri per provider, viste Sommati / Singoli, loghi brand |
 | 👤 | Profilo personalizzabile (foto, nome, bio), heatmap attività, tema chiaro/scuro |
